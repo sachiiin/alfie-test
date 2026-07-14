@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="images/signifi.png">
+<link rel="stylesheet" href="css/styles.css">
+<title>Alfie Test Portal</title>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <img src="images/signifi-logo.png" alt="Signifi" id="headerLogo" style="height:28px; width:auto; object-fit:contain;">
+  <div class="header-sep"></div>
+  <div class="status-dot" id="statusDot"></div>
+  <div class="header-title">Alfie Test Portal</div>
+  <div class="header-sep"></div>
+  <span class="header-desc" style="font-size:12px; color:var(--text-muted);">Serial port management &amp; device control</span>
+  <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Toggle Dark/Light mode">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"/>
+        <line x1="12" y1="1" x2="12" y2="3"/>
+        <line x1="12" y1="21" x2="12" y2="23"/>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <line x1="1" y1="12" x2="3" y2="12"/>
+        <line x1="21" y1="12" x2="23" y2="12"/>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+    </button>
+    <span class="tb-label" id="apiBadge" style="padding:3px 10px; border-radius:20px; border:1.5px solid var(--border);">checking…</span>
+  </div>
+</div>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+
+  <div class="tb-group">
+    <button class="tb-btn connect" id="connectBtn" onclick="openPort()">⬡ Connect COM Port</button>
+    <button class="tb-btn disconnect" id="disconnectBtn" onclick="closePort()" style="display:none;">✕ Disconnect</button>
+  </div>
+
+  <div class="tb-sep"></div>
+
+  <div class="tb-group">
+    <span class="tb-label">Send Line End</span>
+    <select class="tb-select" id="eolSelect" onchange="refreshPreviews()">
+      <option value="CR" selected>CR  (\r)</option>
+      <option value="LF">LF  (\n)</option>
+      <option value="CRLF">CR+LF</option>
+    </select>
+  </div>
+
+  <div class="tb-sep"></div>
+
+  <div class="tb-group">
+    <span class="tb-label">Baud Rate</span>
+    <select class="tb-select" id="baudSelect">
+      <option value="1200">1200</option>
+      <option value="2400">2400</option>
+      <option value="4800">4800</option>
+      <option value="9600">9600</option>
+      <option value="19200">19200</option>
+      <option value="38400">38400</option>
+      <option value="115200" selected>115200</option>
+    </select>
+  </div>
+
+  <div class="tb-sep"></div>
+
+  <div class="tb-group">
+    <span class="tb-label">Alfie No.</span>
+    <select class="tb-select alfie-select" id="alfieSelect" onchange="refreshPreviews()">
+      <option value="01">01</option>
+      <option value="02">02</option>
+      <option value="03">03</option>
+      <option value="04">04</option>
+    </select>
+  </div>
+
+  <div class="tb-sep"></div>
+
+  <button class="tb-btn" id="tsBtn" onclick="toggleTimestamp()">⏱ Timestamp: ON</button>
+
+  <div class="tb-sep"></div>
+
+  <button class="tb-btn" onclick="downloadLog()">↓ Download Log</button>
+
+</div>
+
+<!-- BODY -->
+<div class="body-layout">
+
+  <!-- LEFT: Commands -->
+  <div class="left-panel">
+    <div class="panel-header">
+      <div class="panel-title">Commands</div>
+      <div class="alfie-badge" id="alfieBadge">Alfie 01</div>
+    </div>
+    <div class="cmd-scroll">
+
+      <!-- SECTION: Customized Command -->
+      <div class="cmd-section" style="margin-top:6px;">Customized Command</div>
+
+      <div class="cmd-row">
+        <input type="text" id="customCmd" class="custom-textarea" placeholder="Type any command…" spellcheck="false" autocomplete="off">
+      </div>
+
+      <!-- SECTION: Normal Commands -->
+      <div class="cmd-section">Normal Commands</div>
+
+      <!-- Reset Alfie -->
+      <div class="cmd-row">
+        <div class="cmd-row-inner">
+          <button class="cmd-btn" onclick="fireCmd('reset')">Reset Alfie</button>
+        </div>
+        <div class="cmd-preview" id="prev-reset"></div>
+      </div>
+
+      <!-- Standard Mode -->
+      <div class="cmd-row">
+        <div class="cmd-row-inner">
+          <button class="cmd-btn" onclick="fireCmd('standardMode')">Standard Mode</button>
+        </div>
+        <div class="cmd-preview" id="prev-standardMode"></div>
+      </div>
+
+      <!-- Self Detect Latches -->
+      <div class="cmd-row">
+        <div class="cmd-row-inner">
+          <button class="cmd-btn" onclick="fireCmd('selfDetect')">Self Detect Latches</button>
+        </div>
+        <div class="cmd-preview" id="prev-selfDetect"></div>
+      </div>
+
+      <!-- Open All Doors -->
+      <div class="cmd-row">
+        <div class="cmd-row-inner">
+          <button class="cmd-btn" onclick="fireCmd('openAll')">Open All Doors</button>
+        </div>
+        <div class="cmd-preview" id="prev-openAll"></div>
+      </div>
+
+      <!-- Open Door {N} -->
+      <div class="cmd-row">
+        <div class="cmd-row-inner">
+          <button class="cmd-btn" onclick="fireCmd('openDoor')">Open Door</button>
+          <input class="cmd-input" id="in-openDoor" type="text" maxlength="4" placeholder="Door #" value="01" oninput="refreshPreviews()">
+        </div>
+        <div class="cmd-preview" id="prev-openDoor"></div>
+      </div>
+
+      <!-- Door Status All -->
+      <div class="cmd-row">
+        <div class="cmd-row-inner">
+          <button class="cmd-btn" onclick="fireCmd('statusAll')">Door Status All</button>
+        </div>
+        <div class="cmd-preview" id="prev-statusAll"></div>
+      </div>
+
+      <!-- Door Status {N} -->
+      <div class="cmd-row">
+        <div class="cmd-row-inner">
+          <button class="cmd-btn" onclick="fireCmd('statusDoor')">Door Status</button>
+          <input class="cmd-input" id="in-statusDoor" type="text" maxlength="4" placeholder="Door #" value="01" oninput="refreshPreviews()">
+        </div>
+        <div class="cmd-preview" id="prev-statusDoor"></div>
+      </div>
+
+      <!-- SECTION: Unified Command (Color Change) -->
+      <div class="cmd-section" style="margin-top:6px;">Unified Command (Color Change)</div>
+
+      <div class="cmd-row">
+        <div class="cmd-row-inner" style="gap:5px;">
+          <input type="text" id="unifiedCmd" class="custom-textarea" style="flex:1;min-width:0;" placeholder="e.g. t01F4C7FF00FEFF0000" spellcheck="false" autocomplete="off" oninput="decodeUnifiedPreview()">
+          <button class="cmd-btn" style="flex:none;width:130px;padding:0 10px;" onclick="fireUnifiedCmd()">Send</button>
+        </div>
+        <div id="unified-decode" style="display:none; font-size:11px; padding:4px 6px 2px; line-height:1.6; font-family:var(--mono); background:var(--bg); border-radius:5px; margin-top:4px;"></div>
+      </div>
+
+      <!-- SECTION: Change Color Commands -->
+      <div class="cmd-section" style="margin-top:6px;">Change Color Commands</div>
+
+      <div class="cmd-row">
+        <div class="cmd-row-inner" style="margin-bottom:4px;">
+          <select class="tb-select alfie-select" id="colorModeSelect" style="width:100%;">
+            <option value="cycle" selected>Cycle Test</option>
+            <option value="cabinet">Cabinet Test</option>
+          </select>
+        </div>
+        <div class="cmd-row-inner" style="gap:6px;">
+          <button class="cmd-btn color-btn color-red"   id="btn-red"   onclick="handleColorCmd('red')"  >Red</button>
+          <button class="cmd-btn color-btn color-green" id="btn-green" onclick="handleColorCmd('green')">Green</button>
+          <button class="cmd-btn color-btn color-blue"  id="btn-blue"  onclick="handleColorCmd('blue')" >Blue</button>
+        </div>
+        <div id="color-status" style="display:none; font-size:11px; font-weight:600; padding:3px 2px 0; color:var(--text-muted);"></div>
+        <div class="cmd-row-inner" style="gap:6px; margin-top:4px;">
+          <button class="cmd-btn" onclick="fireQuickCmd('oldRgb')">OLD RGB Mode</button>
+          <button class="cmd-btn" onclick="fireQuickCmd('waterfall')">Waterfall Mode</button>
+        </div>
+        <div class="cmd-row-inner" style="gap:6px; margin-top:4px; display:grid; grid-template-columns:1fr 1fr;">
+          <button class="cmd-btn" onclick="fireQuickCmd('standalone')">STANDALONE</button>
+          <button class="cmd-btn" onclick="fireQuickCmd('rgbw')">RGBW</button>
+          <button class="cmd-btn" onclick="fireQuickCmd('rgb')">RGB</button>
+          <button class="cmd-btn" onclick="fireQuickCmd('rgbWon')">RGB &amp; W ON</button>
+        </div>
+      </div>
+
+      <!-- SECTION: Read Parameter Commands -->
+      <div class="cmd-section" style="margin-top:6px;">Read Parameter Commands</div>
+
+      <!-- Read Parameter {DLC} {ID} -->
+      <div class="cmd-row">
+        <div class="cmd-row-inner" style="flex-wrap:wrap; gap:5px;">
+          <input class="cmd-input dlc-input" id="in-dlc" type="text" maxlength="2" placeholder="DLC" value="2" oninput="refreshPreviews()" title="DLC">
+          <input class="cmd-input id-input"  id="in-readParam" type="text" placeholder="ID" value="76" oninput="autoUpdateDLC(); refreshPreviews();" title="ID">
+          <button class="cmd-btn read-btn" onclick="fireCmd('readParam')">Read</button>
+        </div>
+        <div id="dlc-err" style="display:none; font-size:11px; color:var(--red); font-weight:600; padding: 2px 2px 0; line-height:1.4;">
+          ⚠ ID must be even number of hex chars (e.g. 76, 1601)
+        </div>
+        <div class="cmd-preview" id="prev-readParam"></div>
+      </div>
+
+      <!-- SECTION: Edit Parameter Commands -->
+      <div class="cmd-section" style="margin-top:6px;">Edit Parameter Commands</div>
+
+      <!-- Edit Parameter {DLC} {ID} {VALUE} -->
+      <div class="cmd-row">
+        <div class="cmd-row-inner" style="flex-wrap:wrap; gap:5px;">
+          <input class="cmd-input" style="width:44px;flex:none;" id="in-editDlc" type="text" maxlength="2" placeholder="DLC" value="4" oninput="refreshPreviews()" title="DLC">
+          <input class="cmd-input" style="width:88px;flex:none;" id="in-editId"  type="text" placeholder="ID"    value="0B"   oninput="autoUpdateEditDLC(); refreshPreviews();" title="ID">
+          <input class="cmd-input" style="width:98px;flex:none;" id="in-editVal" type="text" placeholder="VALUE" value="0100" oninput="autoUpdateEditDLC(); refreshPreviews();" title="VALUE">
+          <button class="cmd-btn" style="flex:none;width:130px;padding:0 10px;" onclick="fireCmd('editParam')">Write</button>
+        </div>
+        <div id="edit-err" style="display:none; font-size:11px; color:var(--red); font-weight:600; padding:2px 2px 0; line-height:1.4;"></div>
+        <div class="cmd-preview" id="prev-editParam"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- RIGHT: Log -->
+  <div class="right-panel">
+    <div id="apiWarn" class="api-warn" style="display:none;">
+      <strong>Web Serial API unavailable.</strong> Use Chrome, Edge, or Firefox 151+ on HTTPS/localhost. Controls shown for preview only.
+    </div>
+    <div class="log-header">
+      <span class="log-title">Activity Log</span>
+      <div class="log-actions">
+        <button class="log-btn" onclick="clearLog()">Clear</button>
+        <button class="log-btn" onclick="downloadLog()">Export</button>
+      </div>
+    </div>
+    <div class="log-wrap" id="logWrap"></div>
+  </div>
+
+</div>
+
+<script src="js/script.js"></script>
+
+<!-- Vercel Analytics -->
+<script defer src="/_vercel/insights/script.js"></script>
+
+</body>
+</html>
