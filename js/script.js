@@ -544,14 +544,157 @@ const REPORT_FRAMES = {
 };
 
 function parseReportFrame(line) {
-  // Response format: t{AA}F{D}{FF}{...}
-  // t = index 0, Alfie = 1-2, F = 3, DLC = 4, ReportFrame = 5-6
+  // Response format: t{AA}F{D}{FF}{SubCode}{Data...}
+  // t = index 0, Alfie = 1-2, F = 3, DLC = 4, ReportFrame = 5-6, SubCode = 7-8, Data = 9+
   const s = line.trim();
   if (s.length < 7) return null;
   if (s[0].toLowerCase() !== 't') return null;
   if (s[3].toUpperCase() !== 'F') return null;
   const frameCode = s.substring(5, 7).toLowerCase();
-  return REPORT_FRAMES[frameCode] || null;
+  const rf = REPORT_FRAMES[frameCode];
+  if (!rf) return null;
+
+  let decodedMsg = '';
+  if (frameCode === '73') {
+    decodedMsg = decodeInfoReport(s);
+  } else if (frameCode === '77') {
+    decodedMsg = decodeWarnReport(s);
+  }
+
+  return { ...rf, decodedMsg };
+}
+
+// ── 73 Information Report sub-code decoder ──
+function decodeInfoReport(s) {
+  if (s.length < 9) return '';
+  const alfie   = s.substring(1, 3);
+  const subCode = s.substring(7, 9).toLowerCase();
+  const data    = s.length >= 11 ? s.substring(9, 11) : '';
+
+  switch (subCode) {
+    case '71': {
+      // Latches Detected — data = count in hex
+      const count = parseInt(data, 16);
+      return isNaN(count) ? '' : `${count} Latches Detected`;
+    }
+    case '50':
+      // Factory Reset
+      return 'Factory Reset';
+    case '6f': {
+      // Latch Opened — data = latch number in hex
+      const latch = parseInt(data, 16);
+      return isNaN(latch) ? '' : `Latch ${latch} Opened`;
+    }
+    case '63': {
+      // Latch Closed — data = latch number in hex
+      const latch = parseInt(data, 16);
+      return isNaN(latch) ? '' : `Latch ${latch} Closed`;
+    }
+    case '5e':
+      // Bootloader Mode
+      return `Alfie ${alfie} Entered in Bootloader Mode`;
+    case '7c': {
+      // Alfie Reset — 4 bytes (8 hex chars) reset cause
+      const cause = s.length >= 17 ? s.substring(9, 17).toUpperCase() : '';
+      let causeMsg = 'Reset Itself';
+      if (cause === '40000000') causeMsg = 'Soft Reset';
+      else if (cause === 'C0000000') causeMsg = 'Hard Reset';
+      return `Alfie ${alfie} ${causeMsg}`;
+    }
+    case '2a': {
+      // All Latch State — 3-byte position bitmap (same as unified command)
+      if (s.length < 15) return '';
+      const b1 = parseInt(s.substring(9, 11), 16);
+      const b2 = parseInt(s.substring(11, 13), 16);
+      const b3 = parseInt(s.substring(13, 15), 16);
+      if (isNaN(b1) || isNaN(b2) || isNaN(b3)) return '';
+      const openList = [], closeList = [];
+      for (let i = 0; i < 8; i++) { (b1 & (1 << i) ? openList : closeList).push(i + 1); }
+      for (let i = 0; i < 8; i++) { (b2 & (1 << i) ? openList : closeList).push(i + 9); }
+      (b3 & 1 ? openList : closeList).push(17);
+      const parts = [];
+      if (openList.length)  parts.push(openList.join(', ') + ' Open');
+      if (closeList.length) parts.push(closeList.join(', ') + ' Closed');
+      return parts.join(' and ');
+    }
+    default:
+      return '';
+  }
+}
+
+// ── Little-endian byte swap for 2-byte (4 hex char) values ──
+function swapHex16(hex4) {
+  if (hex4.length !== 4) return hex4;
+  return hex4.substring(2, 4) + hex4.substring(0, 2);
+}
+
+// ── 77 Warning Report sub-code decoder ──
+function decodeWarnReport(s) {
+  if (s.length < 9) return '';
+  const alfie   = s.substring(1, 3);
+  const subCode = s.substring(7, 9).toLowerCase();
+
+  switch (subCode) {
+    case '30': {
+      // WARN_OVERCURRENT — latch no (2 hex) + current (4 hex, little-endian, mA)
+      if (s.length < 15) return '';
+      const latch = parseInt(s.substring(9, 11), 16);
+      const rawHex = s.substring(11, 15);
+      const mA = parseInt(swapHex16(rawHex), 16);
+      if (isNaN(latch) || isNaN(mA)) return '';
+      const amps = (mA / 1000).toFixed(1);
+      return `Over Current on Latch ${latch} ${amps}A`;
+    }
+    case '31': {
+      // WARN_OVERVOLTAGE — voltage (4 hex, little-endian, mV)
+      if (s.length < 13) return '';
+      const rawHex = s.substring(9, 13);
+      const mV = parseInt(swapHex16(rawHex), 16);
+      if (isNaN(mV)) return '';
+      const volts = (mV / 1000).toFixed(1);
+      return `Over Voltage ${volts}V`;
+    }
+    case '32': {
+      // WARN_UNDERVOLTAGE — voltage (4 hex, little-endian, mV)
+      if (s.length < 13) return '';
+      const rawHex = s.substring(9, 13);
+      const mV = parseInt(swapHex16(rawHex), 16);
+      if (isNaN(mV)) return '';
+      const volts = (mV / 1000).toFixed(1);
+      return `Under Voltage ${volts}V`;
+    }
+    case '33': {
+      // WARN_LATCH_SHORT_CIRCUIT — latch no (2 hex)
+      if (s.length < 11) return '';
+      const latch = parseInt(s.substring(9, 11), 16);
+      return isNaN(latch) ? '' : `Latch ${latch} Short Circuit`;
+    }
+    case '64': {
+      // Light warnings — 1 byte sub-type
+      if (s.length < 11) return '';
+      const sub = s.substring(9, 11).toLowerCase();
+      if (sub === '6d') return 'Lights Count Mismatch';
+      if (sub === '62') return 'Light Broken or Disconnected';
+      if (sub === '63') return 'Frame CRC Fail';
+      return '';
+    }
+    case '74': {
+      // Latch Tempered — latch no (2 hex)
+      if (s.length < 11) return '';
+      const latch = parseInt(s.substring(9, 11), 16);
+      return isNaN(latch) ? '' : `Latch ${latch} Tempered`;
+    }
+    case '6d': {
+      // Memory/Page warnings — 1 byte cause code
+      if (s.length < 11) return '';
+      const cause = s.substring(9, 11).toLowerCase();
+      if (cause === '70') return 'Page Write Fail';
+      if (cause === '76') return 'Page Verify Fail';
+      return '';
+    }
+    default:
+      return '';
+  }
 }
 
 // ── Log ──
@@ -584,6 +727,9 @@ function addLog(type, msg) {
     const rf = parseReportFrame(msg);
     if (rf) {
       rfBadge = ` <span class="rf-badge ${rf.cls}">${rf.label}</span>`;
+      if (rf.decodedMsg) {
+        rfBadge += `<span class="rf-decoded ${rf.cls}-text">${rf.decodedMsg}</span>`;
+      }
     }
   }
   row.innerHTML = `

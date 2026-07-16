@@ -389,6 +389,17 @@ body {
 .rf-warn { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber); }
 .rf-fail { background: var(--red-bg);   color: var(--red);   border: 1px solid var(--red);   }
 .rf-reg  { background: var(--blue-bg);  color: var(--blue);  border: 1px solid var(--blue);  }
+.rf-decoded {
+  display: inline;
+  font-family: var(--ui);
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 8px;
+}
+.rf-info-text { color: var(--green); }
+.rf-warn-text { color: var(--amber); }
+.rf-fail-text { color: var(--red);   }
+.rf-reg-text  { color: var(--blue);  }
 
 .api-warn {
   margin: 12px 20px 0;
