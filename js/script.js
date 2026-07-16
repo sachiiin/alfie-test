@@ -692,6 +692,12 @@ function decodeWarnReport(s) {
       if (cause === '76') return 'Page Verify Fail';
       return '';
     }
+    case '6f': {
+      // Fail to Open Latch — latch no (2 hex)
+      if (s.length < 11) return '';
+      const latch = parseInt(s.substring(9, 11), 16);
+      return isNaN(latch) ? '' : `Fail to Open Latch ${latch}, Trying Again`;
+    }
     default:
       return '';
   }
