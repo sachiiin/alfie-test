@@ -535,6 +535,25 @@ function setConnected(open) {
   document.getElementById('statusDot').className = 'status-dot' + (open ? ' open' : '');
 }
 
+// ── Report Frame parsing ──
+const REPORT_FRAMES = {
+  '73': { label: 'INFO REPORT',    cls: 'rf-info' },
+  '77': { label: 'WARNING REPORT', cls: 'rf-warn' },
+  '66': { label: 'FAILURE REPORT', cls: 'rf-fail' },
+  '72': { label: 'REGISTER REPORT',cls: 'rf-reg'  },
+};
+
+function parseReportFrame(line) {
+  // Response format: t{AA}F{D}{FF}{...}
+  // t = index 0, Alfie = 1-2, F = 3, DLC = 4, ReportFrame = 5-6
+  const s = line.trim();
+  if (s.length < 7) return null;
+  if (s[0].toLowerCase() !== 't') return null;
+  if (s[3].toUpperCase() !== 'F') return null;
+  const frameCode = s.substring(5, 7).toLowerCase();
+  return REPORT_FRAMES[frameCode] || null;
+}
+
 // ── Log ──
 function addLog(type, msg) {
   const wrap = document.getElementById('logWrap');
@@ -560,10 +579,17 @@ function addLog(type, msg) {
   const row = document.createElement('div');
   row.className = 'log-row';
   row.dataset.type = t;
+  let rfBadge = '';
+  if (t === 'RX') {
+    const rf = parseReportFrame(msg);
+    if (rf) {
+      rfBadge = ` <span class="rf-badge ${rf.cls}">${rf.label}</span>`;
+    }
+  }
   row.innerHTML = `
     <span class="log-ts">${nowStr()}</span>
     <span class="log-type ${t}">${t}</span>
-    <span class="log-msg ${t.toLowerCase()}-msg">${esc(msg)}</span>
+    <span class="log-msg ${t.toLowerCase()}-msg">${esc(msg)}${rfBadge}</span>
   `;
   wrap.appendChild(row);
   wrap.scrollTop = wrap.scrollHeight;
