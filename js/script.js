@@ -1237,6 +1237,155 @@ async function fireCustomCmd() {
   await sendCmd(raw.trim());
 }
 
+// ── Custom Command Decode Preview ──
+function decodeCustomPreview() {
+  const el = document.getElementById('customCmd');
+  const box = document.getElementById('custom-decode');
+  const raw = el.value.trim();
+
+  if (raw.length < 5) { box.style.display = 'none'; return; }
+  if (raw[0].toLowerCase() !== 't' || raw[3].toUpperCase() !== 'F') {
+    box.style.display = 'none';
+    return;
+  }
+
+  const alfie = raw.substring(1, 3);
+  const dlc = raw[4];
+  const cmdData = raw.length > 5 ? raw.substring(5) : '';
+  const cmdCode = cmdData.length >= 2 ? cmdData.substring(0, 2).toLowerCase() : '';
+
+  const lines = [];
+  let bgType = '';
+  lines.push(`<span class="cd-label">ALFIE</span> <span class="cd-val">${alfie}</span>`);
+  lines.push(`<span class="cd-label">DLC</span> <span class="cd-val">${dlc}</span>`);
+
+  // Check if it's a response (report frame)
+  if (['73','77','66','72'].includes(cmdCode)) {
+    const rf = parseReportFrame(raw);
+    if (rf) {
+      lines.push(`<span class="cd-badge cd-resp">${rf.label}</span>`);
+      if (rf.decodedMsg) lines.push(`<span class="cd-val">${esc(rf.decodedMsg)}</span>`);
+    }
+    if (cmdCode === '73') bgType = 'cdbg-info';
+    else if (cmdCode === '77') bgType = 'cdbg-warn';
+    else if (cmdCode === '66') bgType = 'cdbg-error';
+    else if (cmdCode === '72') bgType = 'cdbg-register';
+    box.className = bgType;
+    box.innerHTML = lines.join('<br>');
+    box.style.display = 'block';
+    return;
+  }
+
+  // Commands
+  switch (cmdCode) {
+    case '7c':
+      bgType = 'cdbg-info';
+      lines.push(`<span class="cd-badge cd-action">RESET</span> <span class="cd-val">Reset Alfie</span>`);
+      break;
+
+    case '44':
+      bgType = 'cdbg-info';
+      lines.push(`<span class="cd-badge cd-action">SELF DETECT</span> <span class="cd-val">Self Detect Latches</span>`);
+      break;
+
+    case '4f': {
+      bgType = 'cdbg-write';
+      const target = cmdData.substring(2).toLowerCase();
+      if (target === '2a') {
+        lines.push(`<span class="cd-badge cd-action">OPEN</span> <span class="cd-val">Open All Doors</span>`);
+      } else if (target.length >= 2) {
+        const door = parseInt(target.substring(0, 2), 16);
+        lines.push(`<span class="cd-badge cd-action">OPEN</span> <span class="cd-val">Open Door ${isNaN(door) ? target : door}</span>`);
+      }
+      break;
+    }
+
+    case '51': {
+      bgType = 'cdbg-read';
+      const target = cmdData.substring(2).toLowerCase();
+      if (target === '2a') {
+        lines.push(`<span class="cd-badge cd-read">STATUS</span> <span class="cd-val">Door Status All</span>`);
+      } else if (target.length >= 2) {
+        const door = parseInt(target.substring(0, 2), 16);
+        lines.push(`<span class="cd-badge cd-read">STATUS</span> <span class="cd-val">Door Status ${isNaN(door) ? target : door}</span>`);
+      }
+      break;
+    }
+
+    case '52': {
+      // Read Parameter
+      bgType = 'cdbg-read';
+      const regData = cmdData.substring(2);
+      if (!regData) { lines.push(`<span class="cd-badge cd-read">READ</span>`); break; }
+      const match = lookupRegister(regData);
+      lines.push(`<span class="cd-badge cd-read">READ PARAMETER</span>`);
+      if (match) {
+        const idHex = regData.substring(0, match.idLen).toUpperCase();
+        lines.push(`<span class="cd-label">REGISTER</span> <span class="cd-val">${match.reg.name} (ID: ${idHex})</span>`);
+      } else {
+        lines.push(`<span class="cd-label">REGISTER ID</span> <span class="cd-val">${regData.toUpperCase()}</span>`);
+      }
+      break;
+    }
+
+    case '57': {
+      // Write Parameter
+      bgType = 'cdbg-write';
+      const regData = cmdData.substring(2);
+      if (!regData) { lines.push(`<span class="cd-badge cd-write">WRITE</span>`); break; }
+      const match = lookupRegister(regData);
+      lines.push(`<span class="cd-badge cd-write">WRITE PARAMETER</span>`);
+      if (match) {
+        const idHex = regData.substring(0, match.idLen).toUpperCase();
+        const valueHex = regData.substring(match.idLen);
+        lines.push(`<span class="cd-label">REGISTER</span> <span class="cd-val">${match.reg.name} (ID: ${idHex})</span>`);
+        if (valueHex) {
+          const decoded = decodeRegValue(match.reg.unit, valueHex);
+          lines.push(`<span class="cd-label">VALUE</span> <span class="cd-val">${esc(decoded)}</span>`);
+        }
+      } else {
+        lines.push(`<span class="cd-label">DATA</span> <span class="cd-val">${regData.toUpperCase()}</span>`);
+      }
+      break;
+    }
+
+    case '4c': {
+      // Color command (cabinet / unified)
+      bgType = 'cdbg-write';
+      lines.push(`<span class="cd-badge cd-color">COLOR CHANGE</span>`);
+      if (cmdData.length >= 14) {
+        // Unified: 4C{B1}{B2}{B3}{RR}{GG}{BB}
+        // But full string positions: bitmap starts at cmdData[2], which is raw position 7
+        const info = decodeUnifiedCmd(raw);
+        if (info && info.affected.length > 0) {
+          lines.push(`<span class="cd-label">LATCHES</span> <span class="cd-val">${info.affected.join(', ')}</span>`);
+          const colorName = rgbToColorName(
+            parseInt(info.rHex, 16),
+            parseInt(info.gHex, 16),
+            parseInt(info.bHex, 16)
+          );
+          lines.push(`<span class="cd-label">COLOR</span> <span class="cd-val">${esc(colorName)}</span>`);
+        } else if (info) {
+          lines.push(`<span class="cd-val">No latches affected</span>`);
+        }
+      }
+      break;
+    }
+
+    default:
+      if (cmdCode) {
+        lines.push(`<span class="cd-label">COMMAND</span> <span class="cd-val">${cmdCode.toUpperCase()}</span>`);
+        if (cmdData.length > 2) {
+          lines.push(`<span class="cd-label">DATA</span> <span class="cd-val">${cmdData.substring(2).toUpperCase()}</span>`);
+        }
+      }
+  }
+
+  box.className = bgType;
+  box.innerHTML = lines.join('<br>');
+  box.style.display = 'block';
+}
+
 // ── Unified Command (Color Change) ──
 function decodeUnifiedCmd(raw) {
   const s = raw.trim();

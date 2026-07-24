@@ -106,7 +106,8 @@
       <div class="cmd-section" style="margin-top:6px;">Customized Command</div>
 
       <div class="cmd-row">
-        <input type="text" id="customCmd" class="custom-textarea" placeholder="Type any command…" spellcheck="false" autocomplete="off">
+        <input type="text" id="customCmd" class="custom-textarea" placeholder="Type any command…" spellcheck="false" autocomplete="off" oninput="decodeCustomPreview()">
+        <div id="custom-decode" style="display:none;"></div>
       </div>
 
       <!-- SECTION: Normal Commands -->

@@ -441,6 +441,69 @@ body {
 .custom-textarea:focus { border-color: var(--blue); background: var(--blue-bg); }
 .custom-textarea::placeholder { color: var(--text-dim); font-family: var(--ui); font-size: 12px; }
 
+/* ── Custom Command Decode Preview ── */
+#custom-decode {
+  font-size: 11px;
+  font-family: var(--mono);
+  line-height: 1.7;
+  padding: 6px 8px;
+  background: var(--bg);
+  border-radius: 5px;
+  border: 1px solid var(--border);
+}
+#custom-decode .cd-label {
+  font-family: var(--ui);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+#custom-decode .cd-val {
+  color: var(--text);
+  font-weight: 500;
+}
+#custom-decode .cd-badge {
+  display: inline-block;
+  font-family: var(--ui);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 2px;
+}
+#custom-decode .cd-read   { background: var(--blue-bg);  color: var(--blue);  border: 1px solid var(--blue); }
+#custom-decode .cd-write  { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber); }
+#custom-decode .cd-action { background: var(--green-bg); color: var(--green); border: 1px solid var(--green); }
+#custom-decode .cd-resp   { background: var(--surface);  color: var(--text-muted); border: 1px solid var(--border-md); }
+#custom-decode .cd-color  { background: var(--red-bg);   color: var(--red);   border: 1px solid var(--red); }
+
+/* ── Decode preview background by type ── */
+#custom-decode.cdbg-info     { background: var(--green-bg); border-color: var(--green); }
+#custom-decode.cdbg-warn     { background: var(--amber-bg); border-color: var(--amber); }
+#custom-decode.cdbg-error    { background: var(--red-bg);   border-color: var(--red); }
+#custom-decode.cdbg-register { background: var(--blue-bg);  border-color: var(--blue); }
+#custom-decode.cdbg-write    { background: #FFF8E0;         border-color: #C9A800; }
+#custom-decode.cdbg-read     { background: #F5E8FF;         border-color: #8A3FBF; }
+#custom-decode.cdbg-read .cd-val,
+#custom-decode.cdbg-read .cd-label { color: #6B2FA0; }
+#custom-decode.cdbg-write .cd-val,
+#custom-decode.cdbg-write .cd-label { color: #8A6D00; }
+#custom-decode.cdbg-info .cd-val,
+#custom-decode.cdbg-info .cd-label { color: var(--green); }
+#custom-decode.cdbg-warn .cd-val,
+#custom-decode.cdbg-warn .cd-label { color: var(--amber); }
+#custom-decode.cdbg-error .cd-val,
+#custom-decode.cdbg-error .cd-label { color: var(--red); }
+#custom-decode.cdbg-register .cd-val,
+#custom-decode.cdbg-register .cd-label { color: var(--blue); }
+
+[data-theme="dark"] #custom-decode.cdbg-write { background: #2E2A10; border-color: #D4980A; }
+[data-theme="dark"] #custom-decode.cdbg-read  { background: #2A1A3A; border-color: #A860E0; }
+[data-theme="dark"] #custom-decode.cdbg-write .cd-val,
+[data-theme="dark"] #custom-decode.cdbg-write .cd-label { color: #D4980A; }
+[data-theme="dark"] #custom-decode.cdbg-read .cd-val,
+[data-theme="dark"] #custom-decode.cdbg-read .cd-label { color: #A860E0; }
+
 .custom-send-btn {
   margin-top: 6px;
   width: 100%;
