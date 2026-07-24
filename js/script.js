@@ -543,6 +543,228 @@ const REPORT_FRAMES = {
   '72': { label: 'REGISTER REPORT',cls: 'rf-reg'  },
 };
 
+// ── Register ID Map ──
+const REGISTER_MAP = {
+  '00': { name: 'Power On Delay',                     unit: 'ms' },
+  '01': { name: 'Short-circuit Fault Limit',           unit: 'num' },
+  '02': { name: 'Group ID',                            unit: 'num' },
+  '03': { name: 'CAN Bit Rate',                        unit: 'num' },
+  '04': { name: 'ARGBW LED Strip Bit Rate',            unit: 'num' },
+  '05': { name: 'Current Sensor Sensitivity',          unit: 'mvpa' },
+  '06': { name: 'Current Sensor Baseline',             unit: 'mv' },
+  '07': { name: 'Sensor Voltage Multiplier',           unit: 'num' },
+  '08': { name: 'Sensor Voltage Divisor',              unit: 'num' },
+  '09': { name: 'Voltage Under Limit',                 unit: 'mv' },
+  '0a': { name: 'Voltage Over Limit',                  unit: 'mv' },
+  '0b': { name: 'Voltage Monitor Alert Enabled',       unit: 'bool' },
+  '0c': { name: 'Latch Pulse Duration',                unit: 'ms' },
+  '0d': { name: 'Latch Over-Load Current Limit',       unit: 'ma' },
+  '0e': { name: 'Latch Current Test Time',             unit: 'ms' },
+  '0f': { name: 'Latch Open-Circuit Current Limit',    unit: 'ma' },
+  '10': { name: 'Latch Feedback Debounce Period',      unit: 'ms' },
+  '11': { name: 'Total Active Latches',                unit: 'num' },
+  '12': { name: 'Active Latches Map Array',            unit: 'bitmap' },
+  '13': { name: 'Latch Feedback Check Delay',          unit: 'ms' },
+  '14': { name: 'Latch Feedback Check Period',         unit: 'ms' },
+  '15': { name: 'Latch Monitors Map Array',            unit: 'bitmap' },
+  '16': { name: 'Latch PCB Module Map Array',          unit: 'bitmap' },
+  '17': { name: 'Latch Striker Check Period',          unit: 'ms' },
+  '18': { name: 'Latch Tamper Check Period',           unit: 'ms' },
+  '19': { name: 'Current Limit Switch Retries Limit',  unit: 'num' },
+  '1a': { name: 'Current Limit Switch Check Period',   unit: 'ms' },
+  '1b': { name: 'Current Limit Switch Retry Off Time', unit: 'ms' },
+  '1c': { name: 'Current Limit Switch Retry On Delay', unit: 'ms' },
+  '1d': { name: 'LED Strip Mode',                      unit: 'ledmode' },
+  '1e': { name: 'Latch Self Detect Delay',             unit: 'ms' },
+  '23': { name: 'Serial Number',                       unit: 'serial' },
+  '41': { name: 'Instant Voltage',                     unit: 'mv' },
+  '42': { name: 'Average Voltage',                     unit: 'mv' },
+  '43': { name: 'Peak Voltage',                        unit: 'mv' },
+  '56': { name: 'Bootloader Version',                  unit: 'version' },
+  '61': { name: 'Total Instant Current',               unit: 'ma' },
+  '62': { name: 'Total Average Current',               unit: 'ma' },
+  '63': { name: 'Total Peak Current',                  unit: 'ma' },
+  '64': { name: 'Latch Last Current',                  unit: 'pos_ma' },
+  '65': { name: 'Latch Peak Current',                  unit: 'pos_ma' },
+  '66': { name: 'Latch Average Current',               unit: 'pos_ma' },
+  '6d': { name: 'RGBW LED',                            unit: 'pos_rgb' },
+  '6c': { name: 'ARGBW LED Strip Count',               unit: 'num' },
+  '6e': { name: 'Run Time',                            unit: 'sec' },
+  '76': { name: 'Firmware Version',                    unit: 'version' },
+  // ── Multi-byte Register IDs ──
+  '1601': { name: 'RGB LED Mode',                      unit: 'rgbledmode' },
+};
+
+function getRegName(id) {
+  const key = id.toLowerCase();
+  return REGISTER_MAP[key] ? REGISTER_MAP[key].name : null;
+}
+
+// Look up register: try 4-char ID first, then 2-char
+function lookupRegister(dataHex) {
+  const try4 = dataHex.substring(0, 4).toLowerCase();
+  if (REGISTER_MAP[try4]) return { reg: REGISTER_MAP[try4], idLen: 4 };
+  const try2 = dataHex.substring(0, 2).toLowerCase();
+  if (REGISTER_MAP[try2]) return { reg: REGISTER_MAP[try2], idLen: 2 };
+  return null;
+}
+
+// Reverse bytes of a hex string (little-endian → big-endian)
+function swapBytesHex(hex) {
+  const bytes = [];
+  for (let i = 0; i < hex.length; i += 2) bytes.push(hex.substring(i, i + 2));
+  return bytes.reverse().join('');
+}
+
+// Format seconds into human-readable
+function formatRunTime(totalSec) {
+  if (totalSec < 60) return `${totalSec}s`;
+  const d = Math.floor(totalSec / 86400);
+  const h = Math.floor((totalSec % 86400) / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const parts = [];
+  if (d) parts.push(`${d}d`);
+  if (h) parts.push(`${h}h`);
+  if (m) parts.push(`${m}m`);
+  if (s || parts.length === 0) parts.push(`${s}s`);
+  return parts.join(' ');
+}
+
+// Detect color name from RGB values
+function rgbToColorName(r, g, b) {
+  if (r === 0 && g === 0 && b === 0) return 'Off (Black)';
+  if (r > 200 && g > 200 && b > 200) return 'White';
+  if (r > 200 && g < 50 && b < 50)   return 'Red';
+  if (r < 50 && g > 200 && b < 50)   return 'Green';
+  if (r < 50 && g < 50 && b > 200)   return 'Blue';
+  if (r > 200 && g > 200 && b < 50)  return 'Yellow';
+  if (r > 200 && g < 50 && b > 200)  return 'Magenta';
+  if (r < 50 && g > 200 && b > 200)  return 'Cyan';
+  if (r > 200 && g > 100 && g < 200 && b < 50) return 'Orange';
+  return `RGB(${r}, ${g}, ${b})`;
+}
+
+// Decode a register value based on unit type
+function decodeRegValue(unit, valueHex) {
+  switch (unit) {
+    case 'mv': {
+      const raw = parseInt(swapBytesHex(valueHex.substring(0, 4)), 16);
+      if (isNaN(raw)) return valueHex.toUpperCase();
+      return `${(raw / 1000).toFixed(2)}V (${raw}mV)`;
+    }
+    case 'ma': {
+      const raw = parseInt(swapBytesHex(valueHex.substring(0, 4)), 16);
+      if (isNaN(raw)) return valueHex.toUpperCase();
+      return `${(raw / 1000).toFixed(1)}A (${raw}mA)`;
+    }
+    case 'mvpa': {
+      const raw = parseInt(swapBytesHex(valueHex.substring(0, 4)), 16);
+      if (isNaN(raw)) return valueHex.toUpperCase();
+      return `${raw} mV/A`;
+    }
+    case 'ms': {
+      const raw = parseInt(swapBytesHex(valueHex.substring(0, 4)), 16);
+      if (isNaN(raw)) return valueHex.toUpperCase();
+      return `${raw}ms`;
+    }
+    case 'sec': {
+      const raw = parseInt(swapBytesHex(valueHex.substring(0, 8)), 16);
+      if (isNaN(raw)) return valueHex.toUpperCase();
+      return `${formatRunTime(raw)} (${raw}s)`;
+    }
+    case 'num': {
+      const raw = parseInt(swapBytesHex(valueHex.substring(0, 4)), 16);
+      if (isNaN(raw)) return valueHex.toUpperCase();
+      return `${raw}`;
+    }
+    case 'bool': {
+      const raw = parseInt(swapBytesHex(valueHex.substring(0, 4)), 16);
+      return raw ? 'Enabled' : 'Disabled';
+    }
+    case 'ledmode': {
+      const raw = parseInt(swapBytesHex(valueHex.substring(0, 4)), 16);
+      const modes = { 0: 'Standalone', 1: 'RGBW', 2: 'RGB', 3: 'RGB & W always ON' };
+      return modes[raw] !== undefined ? modes[raw] : `Unknown (${raw})`;
+    }
+    case 'rgbledmode': {
+      const raw = valueHex.substring(0, 4).toUpperCase();
+      if (raw === 'FFFF') return 'Single RGB LED Mode';
+      if (raw === '0300') return 'Waterfall LED Mode';
+      return `Unknown (${raw})`;
+    }
+    case 'version': {
+      // 32-bit LE: Major(8) Minor(8) Build(16)
+      if (valueHex.length < 8) return valueHex.toUpperCase();
+      const swapped = swapBytesHex(valueHex.substring(0, 8));
+      const val = parseInt(swapped, 16);
+      if (isNaN(val)) return valueHex.toUpperCase();
+      const major = (val >> 24) & 0xFF;
+      const minor = (val >> 16) & 0xFF;
+      const build = val & 0xFFFF;
+      return `${major}.${minor}.${build}`;
+    }
+    case 'serial': {
+      if (valueHex.length < 8) return valueHex.toUpperCase();
+      return swapBytesHex(valueHex.substring(0, 8)).toUpperCase();
+    }
+    case 'bitmap': {
+      // 3-byte bitmap: latches 1-8, 9-16, 17
+      if (valueHex.length < 6) return valueHex.toUpperCase();
+      const b1 = parseInt(valueHex.substring(0, 2), 16);
+      const b2 = parseInt(valueHex.substring(2, 4), 16);
+      const b3 = parseInt(valueHex.substring(4, 6), 16);
+      if (isNaN(b1) || isNaN(b2) || isNaN(b3)) return valueHex.toUpperCase();
+      const active = [];
+      for (let i = 0; i < 8; i++) { if (b1 & (1 << i)) active.push(i + 1); }
+      for (let i = 0; i < 8; i++) { if (b2 & (1 << i)) active.push(i + 9); }
+      if (b3 & 1) active.push(17);
+      return active.length ? `Latches: ${active.join(', ')}` : 'None';
+    }
+    case 'pos_ma': {
+      // Position (2 hex) + Current (4 hex LE)
+      if (valueHex.length < 6) return valueHex.toUpperCase();
+      const pos = parseInt(valueHex.substring(0, 2), 16);
+      const mA = parseInt(swapBytesHex(valueHex.substring(2, 6)), 16);
+      if (isNaN(pos) || isNaN(mA)) return valueHex.toUpperCase();
+      return `Latch ${pos}: ${(mA / 1000).toFixed(1)}A (${mA}mA)`;
+    }
+    case 'pos_rgb': {
+      // Position (2 hex) + R (2 hex) + G (2 hex) + B (2 hex)
+      if (valueHex.length < 8) return valueHex.toUpperCase();
+      const pos = parseInt(valueHex.substring(0, 2), 16);
+      const r = parseInt(valueHex.substring(2, 4), 16);
+      const g = parseInt(valueHex.substring(4, 6), 16);
+      const b = parseInt(valueHex.substring(6, 8), 16);
+      if (isNaN(pos) || isNaN(r) || isNaN(g) || isNaN(b)) return valueHex.toUpperCase();
+      const colorName = rgbToColorName(r, g, b);
+      return `Latch ${pos}: ${colorName}`;
+    }
+    default:
+      return valueHex.toUpperCase();
+  }
+}
+
+// ── 72 Register Report decoder ──
+function decodeRegReport(s) {
+  if (s.length < 9) return '';
+  const dataAfterFrame = s.substring(7); // everything after report frame (72)
+  const match = lookupRegister(dataAfterFrame);
+
+  if (!match) {
+    const regId = s.substring(7, 9).toUpperCase();
+    return `Unknown Register (ID: ${regId})`;
+  }
+
+  const { reg, idLen } = match;
+  const valueHex = dataAfterFrame.length > idLen ? dataAfterFrame.substring(idLen) : '';
+
+  if (!valueHex) return reg.name;
+
+  const decoded = decodeRegValue(reg.unit, valueHex);
+  return `${reg.name}: ${decoded}`;
+}
+
 function parseReportFrame(line) {
   // Response format: t{AA}F{D}{FF}{SubCode}{Data...}
   // t = index 0, Alfie = 1-2, F = 3, DLC = 4, ReportFrame = 5-6, SubCode = 7-8, Data = 9+
@@ -559,6 +781,10 @@ function parseReportFrame(line) {
     decodedMsg = decodeInfoReport(s);
   } else if (frameCode === '77') {
     decodedMsg = decodeWarnReport(s);
+  } else if (frameCode === '66') {
+    decodedMsg = decodeFailReport(s);
+  } else if (frameCode === '72') {
+    decodedMsg = decodeRegReport(s);
   }
 
   return { ...rf, decodedMsg };
@@ -617,6 +843,43 @@ function decodeInfoReport(s) {
       if (closeList.length) parts.push(closeList.join(', ') + ' Closed');
       return parts.join(' and ');
     }
+
+    // ── Door status ──
+    case '75': {
+      // Door Unlocked (also Latch Strike Out — same sub-code)
+      if (s.length < 11) return '';
+      const door = parseInt(s.substring(9, 11), 16);
+      return isNaN(door) ? '' : `Door ${door} Unlocked`;
+    }
+    case '6b': {
+      const door = parseInt(s.substring(9, 11), 16);
+      return isNaN(door) ? '' : `Door ${door} Locked`;
+    }
+    case '70': {
+      const door = parseInt(s.substring(9, 11), 16);
+      return isNaN(door) ? '' : `Door ${door} Partially Unlocked`;
+    }
+    case '73': {
+      const door = parseInt(s.substring(9, 11), 16);
+      return isNaN(door) ? '' : `Door ${door} Partially Locked`;
+    }
+
+    // ── Compartment status ──
+    case '29': {
+      const pos = parseInt(s.substring(9, 11), 16);
+      return isNaN(pos) ? '' : `Compartment ${pos} Unoccupied`;
+    }
+    case '28': {
+      const pos = parseInt(s.substring(9, 11), 16);
+      return isNaN(pos) ? '' : `Compartment ${pos} Occupied`;
+    }
+
+    // ── Latch Strike ──
+    case '69': {
+      const pos = parseInt(s.substring(9, 11), 16);
+      return isNaN(pos) ? '' : `Latch ${pos} Strike In`;
+    }
+
     default:
       return '';
   }
@@ -698,6 +961,140 @@ function decodeWarnReport(s) {
       const latch = parseInt(s.substring(9, 11), 16);
       return isNaN(latch) ? '' : `Fail to Open Latch ${latch}, Trying Again`;
     }
+    case '6c': {
+      // Fatal Current Limit Switch Fault — latch no (2 hex)
+      if (s.length < 11) return '';
+      const latch = parseInt(s.substring(9, 11), 16);
+      return isNaN(latch) ? '' : `Latch ${latch} Fatal Current Limit Switch Fault`;
+    }
+    default:
+      return '';
+  }
+}
+
+// ── 66 Failure Report sub-code decoder ──
+function decodeFailReport(s) {
+  if (s.length < 9) return '';
+  const alfie   = s.substring(1, 3);
+  const subCode = s.substring(7, 9).toLowerCase();
+  const data    = s.length >= 11 ? s.substring(9, 11) : '';
+  const data4   = s.length >= 13 ? s.substring(9, 13) : '';
+
+  switch (subCode) {
+    // ── Latch failures (Position) ──
+    case '6f': {
+      const latch = parseInt(data, 16);
+      return isNaN(latch) ? '' : `Latch ${latch} Open Failure`;
+    }
+    case '3f': {
+      const latch = parseInt(data, 16);
+      return isNaN(latch) ? '' : `Latch ${latch} State Unknown`;
+    }
+    case '78': {
+      // Latch Connection Broken — position (2 hex) + current (4 hex, little-endian, mA)
+      if (s.length < 15) { const l = parseInt(data, 16); return isNaN(l) ? '' : `Latch ${l} Connection Broken`; }
+      const latch = parseInt(data, 16);
+      const rawHex = s.substring(11, 15);
+      const mA = parseInt(swapHex16(rawHex), 16);
+      if (isNaN(latch)) return '';
+      if (isNaN(mA)) return `Latch ${latch} Connection Broken`;
+      return `Latch ${latch} Connection Broken ${(mA / 1000).toFixed(1)}A`;
+    }
+    case '3e': {
+      // Latch Over-current — position (2 hex) + current (4 hex, little-endian, mA)
+      if (s.length < 15) { const l = parseInt(data, 16); return isNaN(l) ? '' : `Latch ${l} Over-current`; }
+      const latch = parseInt(data, 16);
+      const rawHex = s.substring(11, 15);
+      const mA = parseInt(swapHex16(rawHex), 16);
+      if (isNaN(latch)) return '';
+      if (isNaN(mA)) return `Latch ${latch} Over-current`;
+      return `Latch ${latch} Over-current ${(mA / 1000).toFixed(1)}A`;
+    }
+    case '7b': {
+      const latch = parseInt(data, 16);
+      return isNaN(latch) ? '' : `Latch ${latch} Out of Range`;
+    }
+    case '79': {
+      const latch = parseInt(data, 16);
+      return isNaN(latch) ? '' : `Latch ${latch} Busy Failure`;
+    }
+    case '33': {
+      const latch = parseInt(data, 16);
+      return isNaN(latch) ? '' : `Latch ${latch} Short Circuit`;
+    }
+    case '6c': {
+      const latch = parseInt(data, 16);
+      return isNaN(latch) ? '' : `Latch ${latch} Fatal Current Limit Switch Fault`;
+    }
+
+    // ── Short Circuit Fatal (no data) ──
+    case '21':
+      return 'Short Circuit Fatal';
+
+    // ── Register failures ──
+    case '5b': {
+      if (!data) return 'Read Register Unknown';
+      const rn = getRegName(data);
+      return rn ? `Read Register Unknown: ${rn} (ID: ${data.toUpperCase()})` : `Read Register Unknown (ID: ${data.toUpperCase()})`;
+    }
+    case '72': {
+      const regId = data;
+      const val = s.length >= 13 ? s.substring(11).toUpperCase() : '';
+      const rn = getRegName(regId);
+      const name = rn ? `: ${rn}` : '';
+      return val ? `Write Register Out of Range${name} (ID: ${regId.toUpperCase()}, Value: ${val})` : `Write Register Out of Range${name} (ID: ${regId.toUpperCase()})`;
+    }
+    case '69': {
+      return data ? `Register Index Unknown (Index: ${data.toUpperCase()})` : 'Register Index Unknown';
+    }
+    case '49': {
+      if (!data) return 'Register Index Missing';
+      const rn = getRegName(data);
+      return rn ? `Register Index Missing: ${rn} (ID: ${data.toUpperCase()})` : `Register Index Missing (ID: ${data.toUpperCase()})`;
+    }
+    case '28': {
+      if (!data) return 'Register Out of Bound';
+      const rn = getRegName(data);
+      return rn ? `Register Out of Bound: ${rn} (ID: ${data.toUpperCase()})` : `Register Out of Bound (ID: ${data.toUpperCase()})`;
+    }
+
+    // ── Frame failures ──
+    case '4c': {
+      return data ? `Invalid Frame Length (Frame: ${data.toUpperCase()})` : 'Invalid Frame Length';
+    }
+    case '24': {
+      return data ? `Frame ID Unknown (ID: ${data.toUpperCase()})` : 'Frame ID Unknown';
+    }
+    case '2d':
+      return 'Frame Attribute Unsupported';
+
+    // ── Flash / Memory ──
+    case '6e': {
+      if (!data) return 'Flash Write Error';
+      const rn = getRegName(data);
+      return rn ? `Flash Write Error: ${rn} (Register: ${data.toUpperCase()})` : `Flash Write Error (Register: ${data.toUpperCase()})`;
+    }
+
+    // ── Door failures ──
+    case '75': {
+      const door = parseInt(data, 16);
+      return isNaN(door) ? '' : `Door ${door} Unlock Failure`;
+    }
+    case '7d': {
+      const door = parseInt(data, 16);
+      return isNaN(door) ? '' : `Door ${door} Out of Range`;
+    }
+    case '7a': {
+      const door = parseInt(data, 16);
+      return isNaN(door) ? '' : `Door ${door} Busy Failure`;
+    }
+
+    // ── Compartment ──
+    case '5d': {
+      const pos = parseInt(data, 16);
+      return isNaN(pos) ? '' : `Compartment ${pos} Out of Range`;
+    }
+
     default:
       return '';
   }
