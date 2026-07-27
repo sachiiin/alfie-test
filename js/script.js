@@ -18,6 +18,7 @@ const CMD_MAP = {
   statusDoor:   (a, d) => `t${a}F251${decToHex(d)}`,
   readParam:    (a, d, dlc) => `t${a}F${dlc}52${d}`,
   editParam:    (a, id, val, dlc) => `t${a}F${dlc}57${id}${val}`,
+  resetAllParam: a => `t${a}F150`,
 };
 
 const NEEDS_INPUT = ['openDoor','statusDoor','readParam','editParam'];
@@ -1286,6 +1287,11 @@ function decodeCustomPreview() {
     case '44':
       bgType = 'cdbg-info';
       lines.push(`<span class="cd-badge cd-action">SELF DETECT</span> <span class="cd-val">Self Detect Latches</span>`);
+      break;
+
+    case '50':
+      bgType = 'cdbg-error';
+      lines.push(`<span class="cd-badge cd-color">FACTORY RESET</span> <span class="cd-val">Reset All Parameters</span>`);
       break;
 
     case '4f': {
