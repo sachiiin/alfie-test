@@ -563,7 +563,7 @@ const REGISTER_MAP = {
   '0e': { name: 'Latch Current Test Time',             unit: 'ms' },
   '0f': { name: 'Latch Open-Circuit Current Limit',    unit: 'ma' },
   '10': { name: 'Latch Feedback Debounce Period',      unit: 'ms' },
-  '11': { name: 'Total Active Latches',                unit: 'num' },
+  '11': { name: 'Total Active Latches',                unit: 'latches' },
   '12': { name: 'Active Latches Map Array',            unit: 'bitmap' },
   '13': { name: 'Latch Feedback Check Delay',          unit: 'ms' },
   '14': { name: 'Latch Feedback Check Period',         unit: 'ms' },
@@ -679,6 +679,13 @@ function decodeRegValue(unit, valueHex) {
       if (isNaN(raw)) return valueHex.toUpperCase();
       return `${raw}`;
     }
+    case 'latches': {
+      const rawHex = valueHex.substring(0, 4).toUpperCase();
+      if (rawHex === 'FFFF') return 'Standard Mode (All Active)';
+      const raw = parseInt(swapBytesHex(rawHex), 16);
+      if (isNaN(raw)) return rawHex;
+      return `${raw}`;
+    }
     case 'bool': {
       const raw = parseInt(swapBytesHex(valueHex.substring(0, 4)), 16);
       return raw ? 'Enabled' : 'Disabled';
@@ -695,14 +702,12 @@ function decodeRegValue(unit, valueHex) {
       return `Unknown (${raw})`;
     }
     case 'version': {
-      // 32-bit LE: Major(8) Minor(8) Build(16)
+      // Byte 0: Major, Byte 1: Minor, Bytes 2-3: Build (little-endian)
       if (valueHex.length < 8) return valueHex.toUpperCase();
-      const swapped = swapBytesHex(valueHex.substring(0, 8));
-      const val = parseInt(swapped, 16);
-      if (isNaN(val)) return valueHex.toUpperCase();
-      const major = (val >> 24) & 0xFF;
-      const minor = (val >> 16) & 0xFF;
-      const build = val & 0xFFFF;
+      const major = parseInt(valueHex.substring(0, 2), 16);
+      const minor = parseInt(valueHex.substring(2, 4), 16);
+      const build = parseInt(swapHex16(valueHex.substring(4, 8)), 16);
+      if (isNaN(major) || isNaN(minor) || isNaN(build)) return valueHex.toUpperCase();
       return `${major}.${minor}.${build}`;
     }
     case 'serial': {
@@ -1263,14 +1268,15 @@ function decodeCustomPreview() {
   // Check if it's a response (report frame)
   if (['73','77','66','72'].includes(cmdCode)) {
     const rf = parseReportFrame(raw);
+    let badgeCls = 'cd-resp';
+    if (cmdCode === '73') { bgType = 'cdbg-info'; badgeCls = 'cd-action'; }
+    else if (cmdCode === '77') { bgType = 'cdbg-warn'; badgeCls = 'cd-write'; }
+    else if (cmdCode === '66') { bgType = 'cdbg-error'; badgeCls = 'cd-color'; }
+    else if (cmdCode === '72') { bgType = 'cdbg-register'; badgeCls = 'cd-read'; }
     if (rf) {
-      lines.push(`<span class="cd-badge cd-resp">${rf.label}</span>`);
+      lines.push(`<span class="cd-badge ${badgeCls}">${rf.label}</span>`);
       if (rf.decodedMsg) lines.push(`<span class="cd-val">${esc(rf.decodedMsg)}</span>`);
     }
-    if (cmdCode === '73') bgType = 'cdbg-info';
-    else if (cmdCode === '77') bgType = 'cdbg-warn';
-    else if (cmdCode === '66') bgType = 'cdbg-error';
-    else if (cmdCode === '72') bgType = 'cdbg-register';
     box.className = bgType;
     box.innerHTML = lines.join('<br>');
     box.style.display = 'block';
