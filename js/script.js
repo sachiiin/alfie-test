@@ -1268,11 +1268,11 @@ function decodeCustomPreview() {
   // Check if it's a response (report frame)
   if (['73','77','66','72'].includes(cmdCode)) {
     const rf = parseReportFrame(raw);
-    let badgeCls = 'cd-resp';
-    if (cmdCode === '73') { bgType = 'cdbg-info'; badgeCls = 'cd-action'; }
-    else if (cmdCode === '77') { bgType = 'cdbg-warn'; badgeCls = 'cd-write'; }
-    else if (cmdCode === '66') { bgType = 'cdbg-error'; badgeCls = 'cd-color'; }
-    else if (cmdCode === '72') { bgType = 'cdbg-register'; badgeCls = 'cd-read'; }
+    let badgeCls = '';
+    if (cmdCode === '73') { bgType = 'cdbg-info'; badgeCls = 'cd-badge-info'; }
+    else if (cmdCode === '77') { bgType = 'cdbg-warn'; badgeCls = 'cd-badge-warn'; }
+    else if (cmdCode === '66') { bgType = 'cdbg-error'; badgeCls = 'cd-badge-error'; }
+    else if (cmdCode === '72') { bgType = 'cdbg-register'; badgeCls = 'cd-badge-register'; }
     if (rf) {
       lines.push(`<span class="cd-badge ${badgeCls}">${rf.label}</span>`);
       if (rf.decodedMsg) lines.push(`<span class="cd-val">${esc(rf.decodedMsg)}</span>`);
@@ -1287,27 +1287,27 @@ function decodeCustomPreview() {
   switch (cmdCode) {
     case '7c':
       bgType = 'cdbg-info';
-      lines.push(`<span class="cd-badge cd-action">RESET</span> <span class="cd-val">Reset Alfie</span>`);
+      lines.push(`<span class="cd-badge cd-badge-info">RESET</span> <span class="cd-val">Reset Alfie</span>`);
       break;
 
     case '44':
       bgType = 'cdbg-info';
-      lines.push(`<span class="cd-badge cd-action">SELF DETECT</span> <span class="cd-val">Self Detect Latches</span>`);
+      lines.push(`<span class="cd-badge cd-badge-info">SELF DETECT</span> <span class="cd-val">Self Detect Latches</span>`);
       break;
 
     case '50':
       bgType = 'cdbg-error';
-      lines.push(`<span class="cd-badge cd-color">FACTORY RESET</span> <span class="cd-val">Reset All Parameters</span>`);
+      lines.push(`<span class="cd-badge cd-badge-error">FACTORY RESET</span> <span class="cd-val">Reset All Parameters</span>`);
       break;
 
     case '4f': {
       bgType = 'cdbg-write';
       const target = cmdData.substring(2).toLowerCase();
       if (target === '2a') {
-        lines.push(`<span class="cd-badge cd-action">OPEN</span> <span class="cd-val">Open All Doors</span>`);
+        lines.push(`<span class="cd-badge cd-badge-write">OPEN</span> <span class="cd-val">Open All Doors</span>`);
       } else if (target.length >= 2) {
         const door = parseInt(target.substring(0, 2), 16);
-        lines.push(`<span class="cd-badge cd-action">OPEN</span> <span class="cd-val">Open Door ${isNaN(door) ? target : door}</span>`);
+        lines.push(`<span class="cd-badge cd-badge-write">OPEN</span> <span class="cd-val">Open Door ${isNaN(door) ? target : door}</span>`);
       }
       break;
     }
@@ -1316,10 +1316,10 @@ function decodeCustomPreview() {
       bgType = 'cdbg-read';
       const target = cmdData.substring(2).toLowerCase();
       if (target === '2a') {
-        lines.push(`<span class="cd-badge cd-read">STATUS</span> <span class="cd-val">Door Status All</span>`);
+        lines.push(`<span class="cd-badge cd-badge-read">STATUS</span> <span class="cd-val">Door Status All</span>`);
       } else if (target.length >= 2) {
         const door = parseInt(target.substring(0, 2), 16);
-        lines.push(`<span class="cd-badge cd-read">STATUS</span> <span class="cd-val">Door Status ${isNaN(door) ? target : door}</span>`);
+        lines.push(`<span class="cd-badge cd-badge-read">STATUS</span> <span class="cd-val">Door Status ${isNaN(door) ? target : door}</span>`);
       }
       break;
     }
@@ -1328,9 +1328,9 @@ function decodeCustomPreview() {
       // Read Parameter
       bgType = 'cdbg-read';
       const regData = cmdData.substring(2);
-      if (!regData) { lines.push(`<span class="cd-badge cd-read">READ</span>`); break; }
+      if (!regData) { lines.push(`<span class="cd-badge cd-badge-read">READ</span>`); break; }
       const match = lookupRegister(regData);
-      lines.push(`<span class="cd-badge cd-read">READ PARAMETER</span>`);
+      lines.push(`<span class="cd-badge cd-badge-read">READ PARAMETER</span>`);
       if (match) {
         const idHex = regData.substring(0, match.idLen).toUpperCase();
         lines.push(`<span class="cd-label">REGISTER</span> <span class="cd-val">${match.reg.name} (ID: ${idHex})</span>`);
@@ -1344,9 +1344,9 @@ function decodeCustomPreview() {
       // Write Parameter
       bgType = 'cdbg-write';
       const regData = cmdData.substring(2);
-      if (!regData) { lines.push(`<span class="cd-badge cd-write">WRITE</span>`); break; }
+      if (!regData) { lines.push(`<span class="cd-badge cd-badge-write">WRITE</span>`); break; }
       const match = lookupRegister(regData);
-      lines.push(`<span class="cd-badge cd-write">WRITE PARAMETER</span>`);
+      lines.push(`<span class="cd-badge cd-badge-write">WRITE PARAMETER</span>`);
       if (match) {
         const idHex = regData.substring(0, match.idLen).toUpperCase();
         const valueHex = regData.substring(match.idLen);
@@ -1364,7 +1364,7 @@ function decodeCustomPreview() {
     case '4c': {
       // Color command (cabinet / unified)
       bgType = 'cdbg-write';
-      lines.push(`<span class="cd-badge cd-color">COLOR CHANGE</span>`);
+      lines.push(`<span class="cd-badge cd-badge-write">COLOR CHANGE</span>`);
       if (cmdData.length >= 14) {
         // Unified: 4C{B1}{B2}{B3}{RR}{GG}{BB}
         // But full string positions: bitmap starts at cmdData[2], which is raw position 7
