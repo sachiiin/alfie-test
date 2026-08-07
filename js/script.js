@@ -834,16 +834,16 @@ function decodeInfoReport(s) {
       return `Alfie ${alfie} ${causeMsg}`;
     }
     case '2a': {
-      // All Latch State — 3-byte position bitmap (same as unified command)
+      // All Latch State — 3-byte bitmap (bit 1 = Closed, bit 0 = Open)
       if (s.length < 15) return '';
       const b1 = parseInt(s.substring(9, 11), 16);
       const b2 = parseInt(s.substring(11, 13), 16);
       const b3 = parseInt(s.substring(13, 15), 16);
       if (isNaN(b1) || isNaN(b2) || isNaN(b3)) return '';
       const openList = [], closeList = [];
-      for (let i = 0; i < 8; i++) { (b1 & (1 << i) ? openList : closeList).push(i + 1); }
-      for (let i = 0; i < 8; i++) { (b2 & (1 << i) ? openList : closeList).push(i + 9); }
-      (b3 & 1 ? openList : closeList).push(17);
+      for (let i = 0; i < 8; i++) { (b1 & (1 << i) ? closeList : openList).push(i + 1); }
+      for (let i = 0; i < 8; i++) { (b2 & (1 << i) ? closeList : openList).push(i + 9); }
+      (b3 & 1 ? closeList : openList).push(17);
       const parts = [];
       if (openList.length)  parts.push(openList.join(', ') + ' Open');
       if (closeList.length) parts.push(closeList.join(', ') + ' Closed');
