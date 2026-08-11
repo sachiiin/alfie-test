@@ -1155,7 +1155,208 @@ function clearLog() {
   addLog('INFO', 'Log cleared.');
 }
 
-function downloadLog() {
+function loadJsPDF() {
+  return new Promise((resolve, reject) => {
+    if (window.jspdf && window.jspdf.jsPDF) { resolve(window.jspdf.jsPDF); return; }
+    const urls = [
+      'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js',
+      'https://unpkg.com/jspdf@2.5.2/dist/jspdf.umd.min.js'
+    ];
+    let idx = 0;
+    function tryNext() {
+      if (idx >= urls.length) { reject(new Error('Could not load PDF library')); return; }
+      const s = document.createElement('script');
+      s.src = urls[idx++];
+      s.onload = () => {
+        if (window.jspdf && window.jspdf.jsPDF) resolve(window.jspdf.jsPDF);
+        else tryNext();
+      };
+      s.onerror = () => tryNext();
+      document.head.appendChild(s);
+    }
+    tryNext();
+  });
+}
+
+async function downloadLog() {
+  const rows = [...document.querySelectorAll('#logWrap .log-row')];
+  if (rows.length === 0) { addLog('WARN', 'No log entries to export.'); return; }
+
+  let jsPDF;
+  try {
+    addLog('INFO', 'Loading PDF library\u2026');
+    jsPDF = await loadJsPDF();
+  } catch (e) {
+    addLog('WARN', 'PDF library unavailable. Exporting as text.');
+    downloadLogText();
+    return;
+  }
+
+  try {
+
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const marginL = 10, marginR = 10, marginT = 20, marginB = 12;
+  const usableW = pageW - marginL - marginR;
+  const lineH = 5.5;
+
+  // Colors per log type
+  const TYPE_COLORS = {
+    CMD:  [26, 95, 168],
+    INFO: [112, 110, 104],
+    OK:   [42, 122, 75],
+    ERR:  [176, 48, 48],
+    WARN: [138, 90, 0],
+    RX:   [123, 63, 168],
+  };
+  const BG_COLORS = {
+    CMD:  [232, 240, 251],
+    RX:   [245, 232, 255],
+  };
+
+  // Column widths (mm)
+  const colTs = 52, colType = 14;
+  const colMsg = usableW - colTs - colType;
+
+  function drawHeader(pageNum, totalText) {
+    // Header bar
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 0, pageW, 14, 'F');
+    doc.setDrawColor(200, 197, 188);
+    doc.line(0, 14, pageW, 14);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(28, 27, 24);
+    doc.text('Alfie Test Portal', marginL, 9);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(112, 110, 104);
+    doc.text('Activity Log Export', marginL + 42, 9);
+
+    // Right side: date + page
+    const dateStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) +
+      '  ' + new Date().toLocaleTimeString('en-GB', { hour12: false });
+    doc.text(dateStr, pageW - marginR, 9, { align: 'right' });
+
+    // Column headers
+    doc.setFillColor(237, 234, 227);
+    doc.rect(marginL, 15, usableW, 5, 'F');
+    doc.setFont('courier', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(112, 110, 104);
+    doc.text('TIMESTAMP', marginL + 1, 18.5);
+    doc.text('TYPE', marginL + colTs + 1, 18.5);
+    doc.text('MESSAGE', marginL + colTs + colType + 1, 18.5);
+  }
+
+  // Parse rows
+  const entries = rows.map(r => {
+    const spans = r.querySelectorAll('span');
+    const ts = spans[0]?.textContent || '';
+    const type = spans[1]?.textContent?.trim() || '';
+    const msg = spans[2]?.textContent || '';
+    return { ts, type, msg };
+  });
+
+  let y = marginT + 2;
+  let page = 1;
+  drawHeader(page);
+
+  entries.forEach((entry, idx) => {
+    // Check page break
+    if (y + lineH > pageH - marginB) {
+      doc.addPage();
+      page++;
+      drawHeader(page);
+      y = marginT + 2;
+    }
+
+    // Row background for CMD and RX
+    const bgColor = BG_COLORS[entry.type];
+    if (bgColor) {
+      doc.setFillColor(...bgColor);
+      doc.rect(marginL, y - 3.5, usableW, lineH, 'F');
+    }
+
+    // Divider line between different types
+    if (idx > 0) {
+      const prevType = entries[idx - 1].type;
+      const needsDivider =
+        (entry.type === 'CMD' && prevType !== null) ||
+        (entry.type === 'RX' && prevType !== 'RX') ||
+        (entry.type !== 'RX' && entry.type !== 'CMD' && prevType === 'RX');
+      if (needsDivider) {
+        doc.setDrawColor(200, 197, 188);
+        doc.setLineWidth(0.2);
+        doc.line(marginL, y - 4.2, marginL + usableW, y - 4.2);
+      }
+    }
+
+    // Timestamp
+    doc.setFont('courier', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(155, 152, 145);
+    doc.text(entry.ts, marginL + 1, y);
+
+    // Type badge
+    const tc = TYPE_COLORS[entry.type] || [112, 110, 104];
+    doc.setFont('courier', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(...tc);
+    doc.text(entry.type, marginL + colTs + 1, y);
+
+    // Message - handle long text with wrapping
+    doc.setFont('courier', entry.type === 'CMD' || entry.type === 'RX' ? 'bold' : 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...tc);
+    const msgX = marginL + colTs + colType + 1;
+    const maxMsgW = colMsg - 2;
+    const msgLines = doc.splitTextToSize(entry.msg, maxMsgW);
+    doc.text(msgLines[0] || '', msgX, y);
+
+    // Extra wrapped lines
+    for (let i = 1; i < msgLines.length; i++) {
+      y += lineH;
+      if (y + lineH > pageH - marginB) {
+        doc.addPage();
+        page++;
+        drawHeader(page);
+        y = marginT + 2;
+      }
+      if (bgColor) {
+        doc.setFillColor(...bgColor);
+        doc.rect(marginL, y - 3.5, usableW, lineH, 'F');
+      }
+      doc.text(msgLines[i], msgX, y);
+    }
+
+    y += lineH;
+  });
+
+  // Footer on all pages
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(155, 152, 145);
+    doc.text(`Page ${i} of ${totalPages}`, pageW - marginR, pageH - 5, { align: 'right' });
+    doc.text('Signifi — Alfie Test Portal', marginL, pageH - 5);
+  }
+
+  doc.save(`alfie-log-${Date.now()}.pdf`);
+  addLog('OK', `Log exported as PDF (${entries.length} entries, ${totalPages} page${totalPages > 1 ? 's' : ''}).`);
+  } catch (e) {
+    addLog('ERR', 'PDF export failed: ' + e.message + '. Exporting as text.');
+    downloadLogText();
+  }
+}
+
+// Fallback text export
+function downloadLogText() {
   const rows = [...document.querySelectorAll('#logWrap .log-row')];
   const text = rows.map(r => [...r.querySelectorAll('span')].map(s => s.textContent).join('  ')).join('\n');
   const a = document.createElement('a');
