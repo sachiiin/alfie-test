@@ -228,15 +228,14 @@ function refreshPreviews() {
 
 // ── Timestamp ──
 async function toggleTimestamp() {
-  const turningOff = (tsState === 'on');
-  const cmds = turningOff ? ['C','Z0','O'] : ['C','Z1','O'];
+  const cmds = ['C','Z0','O'];
   for (const c of cmds) {
     await sendCmd(c);
     await delay(150);
   }
-  tsState = turningOff ? 'off' : 'on';
+  tsState = 'off';
   updateTsBtn();
-  addLog('OK', `Timestamp turned ${tsState.toUpperCase()}`);
+  addLog('OK', 'Timestamp turned OFF');
 }
 
 function updateTsBtn() {
@@ -652,12 +651,12 @@ function decodeRegValue(unit, valueHex) {
     case 'mv': {
       const raw = parseInt(swapBytesHex(valueHex.substring(0, 4)), 16);
       if (isNaN(raw)) return valueHex.toUpperCase();
-      return `${(raw / 1000).toFixed(2)}V (${raw}mV)`;
+      return `${raw}mV`;
     }
     case 'ma': {
       const raw = parseInt(swapBytesHex(valueHex.substring(0, 4)), 16);
       if (isNaN(raw)) return valueHex.toUpperCase();
-      return `${(raw / 1000).toFixed(1)}A (${raw}mA)`;
+      return `${raw}mA`;
     }
     case 'mvpa': {
       const raw = parseInt(swapBytesHex(valueHex.substring(0, 4)), 16);
@@ -733,7 +732,7 @@ function decodeRegValue(unit, valueHex) {
       const pos = parseInt(valueHex.substring(0, 2), 16);
       const mA = parseInt(swapBytesHex(valueHex.substring(2, 6)), 16);
       if (isNaN(pos) || isNaN(mA)) return valueHex.toUpperCase();
-      return `Latch ${pos}: ${(mA / 1000).toFixed(1)}A (${mA}mA)`;
+      return `Latch ${pos}: ${mA}mA`;
     }
     case 'pos_rgb': {
       // Position (2 hex) + R (2 hex) + G (2 hex) + B (2 hex)
@@ -911,8 +910,7 @@ function decodeWarnReport(s) {
       const rawHex = s.substring(11, 15);
       const mA = parseInt(swapHex16(rawHex), 16);
       if (isNaN(latch) || isNaN(mA)) return '';
-      const amps = (mA / 1000).toFixed(1);
-      return `Over Current on Latch ${latch} ${amps}A`;
+      return `Over Current on Latch ${latch} ${mA}mA`;
     }
     case '31': {
       // WARN_OVERVOLTAGE — voltage (4 hex, little-endian, mV)
@@ -920,8 +918,7 @@ function decodeWarnReport(s) {
       const rawHex = s.substring(9, 13);
       const mV = parseInt(swapHex16(rawHex), 16);
       if (isNaN(mV)) return '';
-      const volts = (mV / 1000).toFixed(1);
-      return `Over Voltage ${volts}V`;
+      return `Over Voltage ${mV}mV`;
     }
     case '32': {
       // WARN_UNDERVOLTAGE — voltage (4 hex, little-endian, mV)
@@ -929,8 +926,7 @@ function decodeWarnReport(s) {
       const rawHex = s.substring(9, 13);
       const mV = parseInt(swapHex16(rawHex), 16);
       if (isNaN(mV)) return '';
-      const volts = (mV / 1000).toFixed(1);
-      return `Under Voltage ${volts}V`;
+      return `Under Voltage ${mV}mV`;
     }
     case '33': {
       // WARN_LATCH_SHORT_CIRCUIT — latch no (2 hex)
@@ -968,10 +964,12 @@ function decodeWarnReport(s) {
       return isNaN(latch) ? '' : `Fail to Open Latch ${latch}, Trying Again`;
     }
     case '6c': {
-      // Fatal Current Limit Switch Fault — latch no (2 hex)
+      // Fatal Current Limit Switch Fault — switch no (2 hex) + retry count (2 hex)
       if (s.length < 11) return '';
-      const latch = parseInt(s.substring(9, 11), 16);
-      return isNaN(latch) ? '' : `Latch ${latch} Fatal Current Limit Switch Fault`;
+      const sw = parseInt(s.substring(9, 11), 16);
+      const retry = s.length >= 13 ? parseInt(s.substring(11, 13), 16) : 0;
+      if (isNaN(sw)) return '';
+      return `Switch ${sw} Fatal Current Limit Fault, Count ${retry || 1}`;
     }
     default:
       return '';
@@ -1004,7 +1002,7 @@ function decodeFailReport(s) {
       const mA = parseInt(swapHex16(rawHex), 16);
       if (isNaN(latch)) return '';
       if (isNaN(mA)) return `Latch ${latch} Connection Broken`;
-      return `Latch ${latch} Connection Broken ${(mA / 1000).toFixed(1)}A`;
+      return `Latch ${latch} Connection Broken ${mA}mA`;
     }
     case '3e': {
       // Latch Over-current — position (2 hex) + current (4 hex, little-endian, mA)
@@ -1014,7 +1012,7 @@ function decodeFailReport(s) {
       const mA = parseInt(swapHex16(rawHex), 16);
       if (isNaN(latch)) return '';
       if (isNaN(mA)) return `Latch ${latch} Over-current`;
-      return `Latch ${latch} Over-current ${(mA / 1000).toFixed(1)}A`;
+      return `Latch ${latch} Over-current ${mA}mA`;
     }
     case '7b': {
       const latch = parseInt(data, 16);
@@ -1029,8 +1027,11 @@ function decodeFailReport(s) {
       return isNaN(latch) ? '' : `Latch ${latch} Short Circuit`;
     }
     case '6c': {
-      const latch = parseInt(data, 16);
-      return isNaN(latch) ? '' : `Latch ${latch} Fatal Current Limit Switch Fault`;
+      // Fatal Current Limit Switch Fault — switch no (2 hex) + retry count (2 hex)
+      const sw = parseInt(data, 16);
+      const retry = s.length >= 13 ? parseInt(s.substring(11, 13), 16) : 0;
+      if (isNaN(sw)) return '';
+      return `Switch ${sw} Fatal Current Limit Fault, Count ${retry || 1}`;
     }
 
     // ── Short Circuit Fatal (no data) ──
@@ -1713,7 +1714,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Ctrl+L / Cmd+L: clear log
   document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') {
       e.preventDefault();
       clearLog();
     }
