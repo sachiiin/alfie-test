@@ -726,6 +726,28 @@ const UBEI_REPORT_FRAMES = {
   '62': { label: 'FAILURE REPORT',  cls: 'rf-fail' },
 };
 
+// ── UBEI Register Map ──
+const UBEI_REG_MAP = {
+  '00': 'Firmware Version',
+  '2d': 'Address Mode',
+  '73': 'Serial Number',
+};
+
+function getUbeiRegName(id) {
+  const key = id.toLowerCase();
+  return UBEI_REG_MAP[key] || `Register ${parseInt(id, 16)}`;
+}
+
+function decodeUbeiRegValueInline(regId, valueHex) {
+  if (regId === '2d') {
+    const val = valueHex.substring(0, 4).toUpperCase();
+    if (val === '0001') return 'Auto Address';
+    if (val === '0000') return 'Manual Address';
+    return `Unknown (${val})`;
+  }
+  return `0x${valueHex.toUpperCase()} (${parseInt(valueHex, 16)})`;
+}
+
 // ── UBEI Connection lookup ──
 const UBEI_CONN = {
   '00': 'Nothing Connected',
@@ -837,6 +859,13 @@ function decodeUbeiRegReport(s) {
     const minor = parseInt(valueHex.substring(2, 4), 16);
     const build = parseInt(valueHex.substring(4, 8), 16);
     return `Firmware Version: ${major}.${minor}.${build}`;
+  }
+  if (regId === '2d') {
+    // UBEI Address Mode
+    const val = valueHex.substring(0, 4).toUpperCase();
+    if (val === '0001') return `Address Mode: Auto Address`;
+    if (val === '0000') return `Address Mode: Manual Address`;
+    return `Address Mode: Unknown (${val})`;
   }
   // Generic register: 2 bytes big-endian
   if (valueHex.length >= 4) {
@@ -1901,7 +1930,8 @@ function decodeCustomPreview() {
         const regData = cmdData.substring(2);
         lines.push(`<span class="cd-badge cd-badge-read">READ REGISTER</span>`);
         if (regData) {
-          lines.push(`<span class="cd-label">REGISTER ID</span> <span class="cd-val">0x${regData.toUpperCase()} (${parseInt(regData, 16)})</span>`);
+          const regName = getUbeiRegName(regData);
+          lines.push(`<span class="cd-label">REGISTER</span> <span class="cd-val">${regName} (0x${regData.toUpperCase()})</span>`);
         }
         break;
       }
@@ -1912,10 +1942,11 @@ function decodeCustomPreview() {
         if (regData.length >= 2) {
           const regId = regData.substring(0, 2);
           const val = regData.length > 2 ? regData.substring(2) : '';
-          lines.push(`<span class="cd-label">REGISTER ID</span> <span class="cd-val">0x${regId.toUpperCase()} (${parseInt(regId, 16)})</span>`);
+          const regName = getUbeiRegName(regId);
+          lines.push(`<span class="cd-label">REGISTER</span> <span class="cd-val">${regName} (0x${regId.toUpperCase()})</span>`);
           if (val) {
-            const valDec = parseInt(val, 16);
-            lines.push(`<span class="cd-label">VALUE</span> <span class="cd-val">0x${val.toUpperCase()} (${valDec})</span>`);
+            const decoded = decodeUbeiRegValueInline(regId.toLowerCase(), val);
+            lines.push(`<span class="cd-label">VALUE</span> <span class="cd-val">${decoded}</span>`);
           }
         }
         break;
