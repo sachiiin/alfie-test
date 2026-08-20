@@ -699,16 +699,17 @@ const UBEI_REPORT_FRAMES = {
 const UBEI_CONN = {
   '00': 'Nothing Connected',
   '01': 'Sink Device Connected',
+  '02': 'No Device, Noise CC1',
   '03': 'Device Connected Right-side Up',
-  '04': 'No Device, Noise CC1',
+  '04': 'No Device, Noise CC2',
   '05': 'Device Connected Upside Down',
   '06': 'No Device, Noise CC1 CC2',
-  '07': 'Device No PD',
+  '07': 'Device No PD Connected',
 };
 
 // ── UBEI Port State lookup ──
 const UBEI_PORT_STATE = {
-  '00': 'Idle',
+  '00': 'Idle No Connection',
   '01': 'Sink Connected',
   '02': 'Charged',
   '03': 'Charging',
