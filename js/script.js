@@ -727,7 +727,7 @@ function decodeUbeiInfoReport(s) {
       // RESET_CAUSE
       const cause = s.length >= 17 ? s.substring(9, 17).toUpperCase() : '';
       if (cause === 'E00003DF') return `UBEI ${addr} Soft Reset`;
-      if (cause === 'E00000C3') return `UBEI ${addr} Hard Reset`;
+      if (cause === 'E0000043') return `UBEI ${addr} Reset Itself`;
       return `UBEI ${addr} Reset (${cause})`;
     }
     case '70': {
