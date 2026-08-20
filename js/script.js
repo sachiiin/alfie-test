@@ -29,6 +29,7 @@ const UBEI_CMD_MAP = {
   portStatus:      (a, p) => `t${a}A250${p}`,
   powerSources:    (val) => `t${val}A156`,
   autoAddress:     _a => `t00A24101`,
+  physicalAddress: (val) => `t${val}A4572D0000`,
   readParam:       (a, d, dlc) => `t${a}A${dlc}52${d}`,
   editParam:       (a, id, val, dlc) => `t${a}A${dlc}57${id}${val}`,
   bootloader:      _a => `t00A123`,
@@ -181,6 +182,10 @@ function buildUbeiCmd(key) {
   if (key === 'powerSources') {
     const v = document.getElementById('in-u-powerSources').value;
     return UBEI_CMD_MAP.powerSources(numToHex2(v));
+  }
+  if (key === 'physicalAddress') {
+    const v = document.getElementById('in-u-physicalAddr').value;
+    return UBEI_CMD_MAP.physicalAddress(numToHex2(v));
   }
   if (key === 'readParam') {
     const d   = document.getElementById('in-u-readParam').value.trim();
@@ -374,6 +379,9 @@ function refreshPreviews() {
     } else if (key === 'powerSources') {
       const v = document.getElementById('in-u-powerSources') ? document.getElementById('in-u-powerSources').value : '0';
       preview = UBEI_CMD_MAP.powerSources(numToHex2(v));
+    } else if (key === 'physicalAddress') {
+      const v = document.getElementById('in-u-physicalAddr') ? document.getElementById('in-u-physicalAddr').value : '0';
+      preview = UBEI_CMD_MAP.physicalAddress(numToHex2(v));
     } else if (key === 'readParam') {
       const d   = (document.getElementById('in-u-readParam') ? document.getElementById('in-u-readParam').value.trim() : '00') || '?';
       const dlc = (document.getElementById('in-u-dlc') ? document.getElementById('in-u-dlc').value.trim() : '2') || '2';
@@ -2168,6 +2176,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const uPower = document.getElementById('in-u-powerSources');
   if (uPower) uPower.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); fireUbeiCmd('powerSources'); }
+  });
+  // Physical Address
+  const uPhysAddr = document.getElementById('in-u-physicalAddr');
+  if (uPhysAddr) uPhysAddr.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); fireUbeiCmd('physicalAddress'); }
   });
   // UBEI Read Register
   const uReadId = document.getElementById('in-u-readParam');

@@ -309,6 +309,14 @@
         <div class="cmd-preview" id="prev-u-autoAddress"></div>
       </div>
 
+      <div class="cmd-row">
+        <div class="cmd-row-inner">
+          <button class="cmd-btn" onclick="fireUbeiCmd('physicalAddress')">Enter Physical UBEI Address</button>
+          <input class="cmd-input" id="in-u-physicalAddr" type="number" min="0" max="255" placeholder="No." value="0" oninput="refreshPreviews()">
+        </div>
+        <div class="cmd-preview" id="prev-u-physicalAddress"></div>
+      </div>
+
       <!-- SECTION: Read Parameter -->
       <div class="cmd-section" style="margin-top:6px;">Read Register Commands</div>
 
