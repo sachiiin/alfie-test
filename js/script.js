@@ -1801,15 +1801,19 @@ function decodeCustomPreview() {
   lines.push(`<span class="cd-label">${devLabel}</span> <span class="cd-val">${addr}</span>`);
   lines.push(`<span class="cd-label">DLC</span> <span class="cd-val">${dlc}</span>`);
 
-  // Check if it's a response (report frame)
-  if (['73','77','66','72'].includes(cmdCode)) {
+  // Check if it's a response (report frame) — works for both Alfie & UBEI via parseReportFrame
+  const ubeiReportCodes = ['69','72','77','66','23','4f'];
+  const alfieReportCodes = ['73','77','66','72'];
+  const isReport = isUbei ? ubeiReportCodes.includes(cmdCode) : alfieReportCodes.includes(cmdCode);
+
+  if (isReport) {
     const rf = parseReportFrame(raw);
-    let badgeCls = '';
-    if (cmdCode === '73') { bgType = 'cdbg-info'; badgeCls = 'cd-badge-info'; }
-    else if (cmdCode === '77') { bgType = 'cdbg-warn'; badgeCls = 'cd-badge-warn'; }
-    else if (cmdCode === '66') { bgType = 'cdbg-error'; badgeCls = 'cd-badge-error'; }
-    else if (cmdCode === '72') { bgType = 'cdbg-register'; badgeCls = 'cd-badge-register'; }
     if (rf) {
+      let badgeCls = '';
+      if (rf.cls === 'rf-info')  { bgType = 'cdbg-info'; badgeCls = 'cd-badge-info'; }
+      else if (rf.cls === 'rf-warn')  { bgType = 'cdbg-warn'; badgeCls = 'cd-badge-warn'; }
+      else if (rf.cls === 'rf-fail')  { bgType = 'cdbg-error'; badgeCls = 'cd-badge-error'; }
+      else if (rf.cls === 'rf-reg')   { bgType = 'cdbg-register'; badgeCls = 'cd-badge-register'; }
       lines.push(`<span class="cd-badge ${badgeCls}">${rf.label}</span>`);
       if (rf.decodedMsg) lines.push(`<span class="cd-val">${esc(rf.decodedMsg)}</span>`);
     }
@@ -1819,7 +1823,80 @@ function decodeCustomPreview() {
     return;
   }
 
-  // Commands
+  // ── UBEI Commands ──
+  if (isUbei) {
+    switch (cmdCode) {
+      case '7c':
+        bgType = 'cdbg-info';
+        lines.push(`<span class="cd-badge cd-badge-info">RESET</span> <span class="cd-val">Reset UBEI</span>`);
+        break;
+      case '53':
+        bgType = 'cdbg-read';
+        lines.push(`<span class="cd-badge cd-badge-read">STATUS</span> <span class="cd-val">${addr === '00' ? 'All Device Status' : `Device Status ${addr} (${parseInt(addr, 16)})`}</span>`);
+        break;
+      case '50': {
+        bgType = 'cdbg-read';
+        const port = cmdData.length >= 4 ? parseInt(cmdData.substring(2, 4), 16) : '?';
+        lines.push(`<span class="cd-badge cd-badge-read">PORT STATUS</span> <span class="cd-val">Port ${port}</span>`);
+        break;
+      }
+      case '56':
+        bgType = 'cdbg-read';
+        lines.push(`<span class="cd-badge cd-badge-read">POWER SOURCES</span> <span class="cd-val">Device ${addr} (${parseInt(addr, 16)})</span>`);
+        break;
+      case '41': {
+        bgType = 'cdbg-info';
+        const sub = cmdData.length >= 4 ? cmdData.substring(2, 4) : '';
+        if (sub === '01') {
+          lines.push(`<span class="cd-badge cd-badge-info">AUTO ADDRESS</span> <span class="cd-val">Enter Auto Address UBEI</span>`);
+        } else {
+          lines.push(`<span class="cd-badge cd-badge-info">COMMAND 41</span> <span class="cd-val">Data: ${cmdData.substring(2).toUpperCase()}</span>`);
+        }
+        break;
+      }
+      case '23':
+        bgType = 'cdbg-warn';
+        lines.push(`<span class="cd-badge cd-badge-warn">BOOTLOADER</span> <span class="cd-val">Enter Bootloader Mode</span>`);
+        break;
+      case '52': {
+        bgType = 'cdbg-read';
+        const regData = cmdData.substring(2);
+        lines.push(`<span class="cd-badge cd-badge-read">READ REGISTER</span>`);
+        if (regData) {
+          lines.push(`<span class="cd-label">REGISTER ID</span> <span class="cd-val">0x${regData.toUpperCase()} (${parseInt(regData, 16)})</span>`);
+        }
+        break;
+      }
+      case '57': {
+        bgType = 'cdbg-write';
+        const regData = cmdData.substring(2);
+        lines.push(`<span class="cd-badge cd-badge-write">WRITE REGISTER</span>`);
+        if (regData.length >= 2) {
+          const regId = regData.substring(0, 2);
+          const val = regData.length > 2 ? regData.substring(2) : '';
+          lines.push(`<span class="cd-label">REGISTER ID</span> <span class="cd-val">0x${regId.toUpperCase()} (${parseInt(regId, 16)})</span>`);
+          if (val) {
+            const valDec = parseInt(val, 16);
+            lines.push(`<span class="cd-label">VALUE</span> <span class="cd-val">0x${val.toUpperCase()} (${valDec})</span>`);
+          }
+        }
+        break;
+      }
+      default:
+        if (cmdCode) {
+          lines.push(`<span class="cd-label">COMMAND</span> <span class="cd-val">${cmdCode.toUpperCase()}</span>`);
+          if (cmdData.length > 2) {
+            lines.push(`<span class="cd-label">DATA</span> <span class="cd-val">${cmdData.substring(2).toUpperCase()}</span>`);
+          }
+        }
+    }
+    box.className = bgType;
+    box.innerHTML = lines.join('<br>');
+    box.style.display = 'block';
+    return;
+  }
+
+  // ── Alfie Commands ──
   switch (cmdCode) {
     case '7c':
       bgType = 'cdbg-info';
