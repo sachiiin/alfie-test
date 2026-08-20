@@ -1856,8 +1856,8 @@ function decodeCustomPreview() {
         lines.push(`<span class="cd-badge cd-badge-info">RESET</span> <span class="cd-val">Reset UBEI</span>`);
         break;
       case '73':
-        bgType = 'cdbg-info';
-        lines.push(`<span class="cd-badge cd-badge-info">RESET</span> <span class="cd-val">Reset UBEI</span>`);
+        bgType = 'cdbg-read';
+        lines.push(`<span class="cd-badge cd-badge-read">READ</span> <span class="cd-val">Read Serial Number</span>`);
         break;
       case '53':
         bgType = 'cdbg-read';
