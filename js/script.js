@@ -751,6 +751,7 @@ function decodeUbeiInfoReport(s) {
       const cause = s.length >= 17 ? s.substring(9, 17).toUpperCase() : '';
       if (cause === 'E00003DF') return `UBEI ${addr} Soft Reset`;
       if (cause === 'E0000043') return `UBEI ${addr} Reset Itself`;
+      if (cause === 'E00002DF') return `UBEI ${addr} Reset After Bootloader Mode`;
       return `UBEI ${addr} Reset (${cause})`;
     }
     case '70': {
