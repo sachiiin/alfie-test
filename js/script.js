@@ -693,6 +693,7 @@ const UBEI_REPORT_FRAMES = {
   '66': { label: 'FAILURE REPORT',  cls: 'rf-fail' },
   '23': { label: 'BOOTLOADER',      cls: 'rf-warn' },
   '4f': { label: 'ADDR ASSIGNED',   cls: 'rf-info' },
+  '62': { label: 'FAILURE REPORT',  cls: 'rf-fail' },
 };
 
 // ── UBEI Connection lookup ──
@@ -1109,6 +1110,8 @@ function parseReportFrame(line) {
       const addr = s.substring(1, 3);
       const addrDec = parseInt(addr, 16);
       decodedMsg = `UBEI Assigned Address: 0x${addr.toUpperCase()} (${addrDec})`;
+    } else if (frameCode === '62') {
+      decodedMsg = `UBEI ${s.substring(1, 3)} Entered Bootloader Mode`;
     }
   } else {
     // Alfie decoders
@@ -1802,7 +1805,7 @@ function decodeCustomPreview() {
   lines.push(`<span class="cd-label">DLC</span> <span class="cd-val">${dlc}</span>`);
 
   // Check if it's a response (report frame) — works for both Alfie & UBEI via parseReportFrame
-  const ubeiReportCodes = ['69','72','77','66','23','4f'];
+  const ubeiReportCodes = ['69','72','77','66','23','4f','62'];
   const alfieReportCodes = ['73','77','66','72'];
   const isReport = isUbei ? ubeiReportCodes.includes(cmdCode) : alfieReportCodes.includes(cmdCode);
 
