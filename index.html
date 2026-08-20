@@ -71,18 +71,6 @@
 
   <div class="tb-sep"></div>
 
-  <div class="tb-group">
-    <span class="tb-label">Alfie No.</span>
-    <select class="tb-select alfie-select" id="alfieSelect" onchange="refreshPreviews()">
-      <option value="01">01</option>
-      <option value="02">02</option>
-      <option value="03">03</option>
-      <option value="04">04</option>
-    </select>
-  </div>
-
-  <div class="tb-sep"></div>
-
   <button class="tb-btn" id="tsBtn" onclick="toggleTimestamp()">⏱ Timestamp: ON</button>
 
   <div class="tb-sep"></div>
@@ -96,9 +84,8 @@
 
   <!-- LEFT: Commands -->
   <div class="left-panel">
-    <div class="panel-header">
-      <div class="panel-title">Commands</div>
-      <div class="alfie-badge" id="alfieBadge">Alfie 01</div>
+    <div class="panel-header" style="padding:0;">
+      <div class="panel-title" style="padding:10px 14px;">Commands</div>
     </div>
     <div class="cmd-scroll">
 
@@ -109,6 +96,21 @@
         <input type="text" id="customCmd" class="custom-textarea" placeholder="Type any command…" spellcheck="false" autocomplete="off" oninput="decodeCustomPreview()">
         <div id="custom-decode" style="display:none;"></div>
       </div>
+
+      <!-- ═══════ ALFIE TEST ═══════ -->
+      <div class="test-section-header" onclick="toggleSection('alfie')">
+        <span class="test-section-arrow" id="alfie-arrow">▼</span>
+        <span class="test-section-title">Alfie Test</span>
+        <select class="tb-select device-select" id="alfieSelect" onchange="refreshPreviews()" onclick="event.stopPropagation()">
+          <option value="01">01</option>
+          <option value="02">02</option>
+          <option value="03">03</option>
+          <option value="04">04</option>
+          <option value="05">05</option>
+          <option value="06">06</option>
+        </select>
+      </div>
+      <div class="test-section-body" id="alfie-body">
 
       <!-- SECTION: Normal Commands -->
       <div class="cmd-section">Normal Commands</div>
@@ -211,9 +213,8 @@
       </div>
 
       <!-- SECTION: Read Parameter Commands -->
-      <div class="cmd-section" style="margin-top:6px;">Read Parameter Commands</div>
+      <div class="cmd-section" style="margin-top:6px;">Read Register Commands</div>
 
-      <!-- Read Parameter {DLC} {ID} -->
       <div class="cmd-row">
         <div class="cmd-row-inner" style="flex-wrap:wrap; gap:5px;">
           <input class="cmd-input dlc-input" id="in-dlc" type="text" maxlength="2" placeholder="DLC" value="2" oninput="refreshPreviews()" title="DLC">
@@ -227,9 +228,8 @@
       </div>
 
       <!-- SECTION: Edit Parameter Commands -->
-      <div class="cmd-section" style="margin-top:6px;">Edit Parameter Commands</div>
+      <div class="cmd-section" style="margin-top:6px;">Write Register Commands</div>
 
-      <!-- Edit Parameter {DLC} {ID} {VALUE} -->
       <div class="cmd-row">
         <div class="cmd-row-inner" style="flex-wrap:wrap; gap:5px;">
           <input class="cmd-input" style="width:44px;flex:none;" id="in-editDlc" type="text" maxlength="2" placeholder="DLC" value="4" oninput="refreshPreviews()" title="DLC">
@@ -250,6 +250,101 @@
         </div>
         <div class="cmd-preview" id="prev-resetAllParam"></div>
       </div>
+
+      </div><!-- /alfie-body -->
+
+      <!-- ═══════ UBEI TEST ═══════ -->
+      <div class="test-section-header" onclick="toggleSection('ubei')">
+        <span class="test-section-arrow" id="ubei-arrow">▶</span>
+        <span class="test-section-title">UBEI Test</span>
+        <input type="number" class="cmd-input device-input" id="ubeiInput" min="1" max="255" value="1" onclick="event.stopPropagation()" oninput="refreshPreviews()" style="width:52px; text-align:center; font-weight:700;">
+      </div>
+      <div class="test-section-body collapsed" id="ubei-body">
+
+      <!-- SECTION: Normal Commands -->
+      <div class="cmd-section">Normal Commands</div>
+
+      <div class="cmd-row">
+        <div class="cmd-row-inner">
+          <button class="cmd-btn" onclick="fireUbeiCmd('reset')">Reset UBEI</button>
+        </div>
+        <div class="cmd-preview" id="prev-u-reset"></div>
+      </div>
+
+      <div class="cmd-row">
+        <div class="cmd-row-inner">
+          <button class="cmd-btn" onclick="fireUbeiCmd('allDeviceStatus')">All Device Status</button>
+        </div>
+        <div class="cmd-preview" id="prev-u-allDeviceStatus"></div>
+      </div>
+
+      <div class="cmd-row">
+        <div class="cmd-row-inner">
+          <button class="cmd-btn" onclick="fireUbeiCmd('deviceStatus')">Device Status</button>
+          <input class="cmd-input" id="in-u-deviceStatus" type="number" min="0" max="255" placeholder="No." value="1" oninput="refreshPreviews()">
+        </div>
+        <div class="cmd-preview" id="prev-u-deviceStatus"></div>
+      </div>
+
+      <div class="cmd-row">
+        <div class="cmd-row-inner">
+          <button class="cmd-btn" onclick="fireUbeiCmd('portStatus')">Port Status</button>
+          <input class="cmd-input" id="in-u-portStatus" type="number" min="1" max="4" placeholder="Port" value="1" oninput="refreshPreviews()">
+        </div>
+        <div class="cmd-preview" id="prev-u-portStatus"></div>
+      </div>
+
+      <div class="cmd-row">
+        <div class="cmd-row-inner">
+          <button class="cmd-btn" onclick="fireUbeiCmd('powerSources')">Power Sources</button>
+          <input class="cmd-input" id="in-u-powerSources" type="number" min="0" max="255" placeholder="No." value="0" oninput="refreshPreviews()">
+        </div>
+        <div class="cmd-preview" id="prev-u-powerSources"></div>
+      </div>
+
+      <div class="cmd-row">
+        <div class="cmd-row-inner">
+          <button class="cmd-btn" onclick="fireUbeiCmd('autoAddress')">Enter Auto Address UBEI</button>
+        </div>
+        <div class="cmd-preview" id="prev-u-autoAddress"></div>
+      </div>
+
+      <!-- SECTION: Read Parameter -->
+      <div class="cmd-section" style="margin-top:6px;">Read Register Commands</div>
+
+      <div class="cmd-row">
+        <div class="cmd-row-inner" style="flex-wrap:wrap; gap:5px;">
+          <input class="cmd-input dlc-input" id="in-u-dlc" type="text" maxlength="2" placeholder="DLC" value="2" oninput="refreshPreviews()" title="DLC">
+          <input class="cmd-input id-input"  id="in-u-readParam" type="text" placeholder="ID" value="00" oninput="autoUpdateUbeiDLC(); refreshPreviews();" title="ID">
+          <button class="cmd-btn read-btn" onclick="fireUbeiCmd('readParam')">Read</button>
+        </div>
+        <div class="cmd-preview" id="prev-u-readParam"></div>
+      </div>
+
+      <!-- SECTION: Edit Parameter -->
+      <div class="cmd-section" style="margin-top:6px;">Write Register Commands</div>
+
+      <div class="cmd-row">
+        <div class="cmd-row-inner" style="flex-wrap:wrap; gap:5px;">
+          <input class="cmd-input" style="width:44px;flex:none;" id="in-u-editDlc" type="text" maxlength="2" placeholder="DLC" value="4" oninput="refreshPreviews()" title="DLC">
+          <input class="cmd-input" style="width:88px;flex:none;" id="in-u-editId"  type="text" placeholder="ID"    value="0B"   oninput="autoUpdateUbeiEditDLC(); refreshPreviews();" title="ID">
+          <input class="cmd-input" style="width:98px;flex:none;" id="in-u-editVal" type="text" placeholder="VALUE" value="0100" oninput="autoUpdateUbeiEditDLC(); refreshPreviews();" title="VALUE">
+          <button class="cmd-btn" style="flex:none;width:130px;padding:0 10px;" onclick="fireUbeiCmd('editParam')">Write</button>
+        </div>
+        <div class="cmd-preview" id="prev-u-editParam"></div>
+      </div>
+
+      <!-- SECTION: Bootloader -->
+      <div class="cmd-section" style="margin-top:6px;">Bootloader</div>
+
+      <div class="cmd-row">
+        <div class="cmd-row-inner">
+          <button class="cmd-btn" style="border-color:var(--red); color:var(--red);" onclick="fireUbeiCmd('bootloader')">Enter Bootloader Mode</button>
+        </div>
+        <div class="cmd-preview" id="prev-u-bootloader"></div>
+      </div>
+
+      </div><!-- /ubei-body -->
 
     </div>
   </div>

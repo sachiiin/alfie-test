@@ -196,6 +196,45 @@ body {
   border: 1px solid #99C0F0;
 }
 
+/* ── Collapsible test sections ── */
+.test-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  margin: 0;
+  cursor: pointer;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+}
+.test-section-header:hover { background: var(--hover); }
+.test-section-arrow {
+  font-size: 10px;
+  color: var(--text-dim);
+  width: 12px;
+  text-align: center;
+}
+.test-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text);
+  flex: 1;
+}
+.device-select {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 6px;
+  min-width: 52px;
+  text-align: center;
+}
+.test-section-body.collapsed {
+  display: none;
+}
+
 .cmd-scroll {
   flex: 1;
   overflow-y: auto;
