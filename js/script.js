@@ -215,6 +215,28 @@ function autoUpdateUbeiEditDLC() {
   dlcEl.value = String((idLen + valLen) / 2 + 1);
 }
 
+function validateUbeiHex() {
+  const el  = document.getElementById('in-u-readParam');
+  const err = document.getElementById('u-dlc-err');
+  if (!el || !err) return;
+  const v = el.value.trim().replace(/\s+/g, '');
+  err.style.display = (v.length > 0 && v.length % 2 !== 0) ? 'block' : 'none';
+}
+
+function validateUbeiEditHex() {
+  const idEl  = document.getElementById('in-u-editId');
+  const valEl = document.getElementById('in-u-editVal');
+  const err   = document.getElementById('u-edit-err');
+  if (!idEl || !valEl || !err) return;
+  const idV  = idEl.value.trim().replace(/\s+/g, '');
+  const valV = valEl.value.trim().replace(/\s+/g, '');
+  const msgs = [];
+  if (idV.length > 0 && idV.length % 2 !== 0) msgs.push('⚠ ID must be even hex chars');
+  if (valV.length > 0 && valV.length % 2 !== 0) msgs.push('⚠ VALUE must be even hex chars');
+  err.innerHTML = msgs.join('<br>');
+  err.style.display = msgs.length ? 'block' : 'none';
+}
+
 // ── Collapsible section toggle (accordion) ──
 function toggleSection(id) {
   const sections = ['alfie', 'ubei'];
@@ -2128,6 +2150,45 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('in-editDlc').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); fireCmd('editParam'); }
+  });
+
+  // ── UBEI Enter key listeners ──
+  // Device Status
+  const uDevStatus = document.getElementById('in-u-deviceStatus');
+  if (uDevStatus) uDevStatus.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); fireUbeiCmd('deviceStatus'); }
+  });
+  // Port Status
+  const uPortStatus = document.getElementById('in-u-portStatus');
+  if (uPortStatus) uPortStatus.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); fireUbeiCmd('portStatus'); }
+  });
+  // Power Sources
+  const uPower = document.getElementById('in-u-powerSources');
+  if (uPower) uPower.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); fireUbeiCmd('powerSources'); }
+  });
+  // UBEI Read Register
+  const uReadId = document.getElementById('in-u-readParam');
+  if (uReadId) uReadId.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); fireUbeiCmd('readParam'); }
+  });
+  const uReadDlc = document.getElementById('in-u-dlc');
+  if (uReadDlc) uReadDlc.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); fireUbeiCmd('readParam'); }
+  });
+  // UBEI Write Register
+  const uEditId = document.getElementById('in-u-editId');
+  if (uEditId) uEditId.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); fireUbeiCmd('editParam'); }
+  });
+  const uEditVal = document.getElementById('in-u-editVal');
+  if (uEditVal) uEditVal.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); fireUbeiCmd('editParam'); }
+  });
+  const uEditDlc = document.getElementById('in-u-editDlc');
+  if (uEditDlc) uEditDlc.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); fireUbeiCmd('editParam'); }
   });
 
   // Ctrl+L / Cmd+L: clear log

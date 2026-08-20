@@ -217,7 +217,7 @@
 
       <div class="cmd-row">
         <div class="cmd-row-inner" style="flex-wrap:wrap; gap:5px;">
-          <input class="cmd-input dlc-input" id="in-dlc" type="text" maxlength="2" placeholder="DLC" value="2" oninput="refreshPreviews()" title="DLC">
+          <input class="cmd-input dlc-input" id="in-dlc" type="text" maxlength="2" placeholder="DLC" value="2" oninput="refreshPreviews()" title="DLC" readonly>
           <input class="cmd-input id-input"  id="in-readParam" type="text" placeholder="ID" value="76" oninput="autoUpdateDLC(); refreshPreviews();" title="ID">
           <button class="cmd-btn read-btn" onclick="fireCmd('readParam')">Read</button>
         </div>
@@ -232,7 +232,7 @@
 
       <div class="cmd-row">
         <div class="cmd-row-inner" style="flex-wrap:wrap; gap:5px;">
-          <input class="cmd-input" style="width:44px;flex:none;" id="in-editDlc" type="text" maxlength="2" placeholder="DLC" value="4" oninput="refreshPreviews()" title="DLC">
+          <input class="cmd-input" style="width:44px;flex:none;" id="in-editDlc" type="text" maxlength="2" placeholder="DLC" value="4" oninput="refreshPreviews()" title="DLC" readonly>
           <input class="cmd-input" style="width:88px;flex:none;" id="in-editId"  type="text" placeholder="ID"    value="0B"   oninput="autoUpdateEditDLC(); refreshPreviews();" title="ID">
           <input class="cmd-input" style="width:98px;flex:none;" id="in-editVal" type="text" placeholder="VALUE" value="0100" oninput="autoUpdateEditDLC(); refreshPreviews();" title="VALUE">
           <button class="cmd-btn" style="flex:none;width:130px;padding:0 10px;" onclick="fireCmd('editParam')">Write</button>
@@ -314,9 +314,12 @@
 
       <div class="cmd-row">
         <div class="cmd-row-inner" style="flex-wrap:wrap; gap:5px;">
-          <input class="cmd-input dlc-input" id="in-u-dlc" type="text" maxlength="2" placeholder="DLC" value="2" oninput="refreshPreviews()" title="DLC">
-          <input class="cmd-input id-input"  id="in-u-readParam" type="text" placeholder="ID" value="00" oninput="autoUpdateUbeiDLC(); refreshPreviews();" title="ID">
+          <input class="cmd-input dlc-input" id="in-u-dlc" type="text" maxlength="2" placeholder="DLC" value="2" oninput="refreshPreviews()" title="DLC" readonly>
+          <input class="cmd-input id-input"  id="in-u-readParam" type="text" placeholder="ID" value="00" oninput="autoUpdateUbeiDLC(); validateUbeiHex(); refreshPreviews();" title="ID">
           <button class="cmd-btn read-btn" onclick="fireUbeiCmd('readParam')">Read</button>
+        </div>
+        <div id="u-dlc-err" style="display:none; font-size:11px; color:var(--red); font-weight:600; padding: 2px 2px 0; line-height:1.4;">
+          ⚠ ID must be even hex chars (e.g. 00, 76)
         </div>
         <div class="cmd-preview" id="prev-u-readParam"></div>
       </div>
@@ -326,11 +329,12 @@
 
       <div class="cmd-row">
         <div class="cmd-row-inner" style="flex-wrap:wrap; gap:5px;">
-          <input class="cmd-input" style="width:44px;flex:none;" id="in-u-editDlc" type="text" maxlength="2" placeholder="DLC" value="4" oninput="refreshPreviews()" title="DLC">
-          <input class="cmd-input" style="width:88px;flex:none;" id="in-u-editId"  type="text" placeholder="ID"    value="0B"   oninput="autoUpdateUbeiEditDLC(); refreshPreviews();" title="ID">
-          <input class="cmd-input" style="width:98px;flex:none;" id="in-u-editVal" type="text" placeholder="VALUE" value="0100" oninput="autoUpdateUbeiEditDLC(); refreshPreviews();" title="VALUE">
+          <input class="cmd-input" style="width:44px;flex:none;" id="in-u-editDlc" type="text" maxlength="2" placeholder="DLC" value="4" oninput="refreshPreviews()" title="DLC" readonly>
+          <input class="cmd-input" style="width:88px;flex:none;" id="in-u-editId"  type="text" placeholder="ID"    value="0B"   oninput="autoUpdateUbeiEditDLC(); validateUbeiEditHex(); refreshPreviews();" title="ID">
+          <input class="cmd-input" style="width:98px;flex:none;" id="in-u-editVal" type="text" placeholder="VALUE" value="0100" oninput="autoUpdateUbeiEditDLC(); validateUbeiEditHex(); refreshPreviews();" title="VALUE">
           <button class="cmd-btn" style="flex:none;width:130px;padding:0 10px;" onclick="fireUbeiCmd('editParam')">Write</button>
         </div>
+        <div id="u-edit-err" style="display:none; font-size:11px; color:var(--red); font-weight:600; padding:2px 2px 0; line-height:1.4;"></div>
         <div class="cmd-preview" id="prev-u-editParam"></div>
       </div>
 
