@@ -798,7 +798,8 @@ function decodeUbeiInfoReport(s) {
       const conn  = UBEI_CONN[connHex] || connHex;
       const volts = (voltage / 10).toFixed(1);
       const mA    = (ampHi << 8) | ampLo;
-      return `UBEI ${addr} Port ${port} ${state}, ${conn}, ${volts}V, ${mA}mA`;
+      const powerW = ((voltage / 10) * (mA / 1000)).toFixed(2);
+      return `UBEI ${addr} Port ${port} ${state}, ${conn}, ${volts}V, ${mA}mA, ${powerW}W`;
     }
     case '73': {
       // DEVICE_STATUS: {State}{Layout}
