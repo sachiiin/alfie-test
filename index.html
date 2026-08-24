@@ -253,34 +253,34 @@
 
       </div><!-- /alfie-body -->
 
-      <!-- ═══════ UBEI TEST ═══════ -->
-      <div class="test-section-header" onclick="toggleSection('ubei')">
-        <span class="test-section-arrow" id="ubei-arrow">▶</span>
-        <span class="test-section-title">UBEI Test</span>
-        <input type="number" class="cmd-input device-input" id="ubeiInput" min="1" max="255" value="1" onclick="event.stopPropagation()" oninput="refreshPreviews()" style="width:52px; text-align:center; font-weight:700;">
+      <!-- ═══════ UBIE TEST ═══════ -->
+      <div class="test-section-header" onclick="toggleSection('ubie')">
+        <span class="test-section-arrow" id="ubie-arrow">▶</span>
+        <span class="test-section-title">UBIE Test</span>
+        <input type="number" class="cmd-input device-input" id="ubieInput" min="1" max="255" value="1" onclick="event.stopPropagation()" oninput="refreshPreviews()" style="width:52px; text-align:center; font-weight:700;">
       </div>
-      <div class="test-section-body collapsed" id="ubei-body">
+      <div class="test-section-body collapsed" id="ubie-body">
 
       <!-- SECTION: Normal Commands -->
       <div class="cmd-section">Normal Commands</div>
 
       <div class="cmd-row">
         <div class="cmd-row-inner">
-          <button class="cmd-btn" onclick="fireUbeiCmd('reset')">Reset UBEI</button>
+          <button class="cmd-btn" onclick="fireUbieCmd('reset')">Reset UBIE</button>
         </div>
         <div class="cmd-preview" id="prev-u-reset"></div>
       </div>
 
       <div class="cmd-row">
         <div class="cmd-row-inner">
-          <button class="cmd-btn" onclick="fireUbeiCmd('allDeviceStatus')">All Device Status</button>
+          <button class="cmd-btn" onclick="fireUbieCmd('allDeviceStatus')">All Device Status</button>
         </div>
         <div class="cmd-preview" id="prev-u-allDeviceStatus"></div>
       </div>
 
       <div class="cmd-row">
         <div class="cmd-row-inner">
-          <button class="cmd-btn" onclick="fireUbeiCmd('deviceStatus')">Device Status</button>
+          <button class="cmd-btn" onclick="fireUbieCmd('deviceStatus')">Device Status</button>
           <input class="cmd-input" id="in-u-deviceStatus" type="number" min="0" max="255" placeholder="No." value="1" oninput="refreshPreviews()">
         </div>
         <div class="cmd-preview" id="prev-u-deviceStatus"></div>
@@ -288,7 +288,7 @@
 
       <div class="cmd-row">
         <div class="cmd-row-inner">
-          <button class="cmd-btn" onclick="fireUbeiCmd('portStatus')">Port Status</button>
+          <button class="cmd-btn" onclick="fireUbieCmd('portStatus')">Port Status</button>
           <input class="cmd-input" id="in-u-portStatus" type="number" min="1" max="4" placeholder="Port" value="1" oninput="refreshPreviews()">
         </div>
         <div class="cmd-preview" id="prev-u-portStatus"></div>
@@ -296,7 +296,7 @@
 
       <div class="cmd-row">
         <div class="cmd-row-inner">
-          <button class="cmd-btn" onclick="fireUbeiCmd('powerSources')">Power Sources</button>
+          <button class="cmd-btn" onclick="fireUbieCmd('powerSources')">Power Sources</button>
           <input class="cmd-input" id="in-u-powerSources" type="number" min="0" max="255" placeholder="No." value="0" oninput="refreshPreviews()">
         </div>
         <div class="cmd-preview" id="prev-u-powerSources"></div>
@@ -304,14 +304,14 @@
 
       <div class="cmd-row">
         <div class="cmd-row-inner">
-          <button class="cmd-btn" onclick="fireUbeiCmd('autoAddress')">Enter Auto Address UBEI</button>
+          <button class="cmd-btn" onclick="fireUbieCmd('autoAddress')">Enter Auto Address UBIE</button>
         </div>
         <div class="cmd-preview" id="prev-u-autoAddress"></div>
       </div>
 
       <div class="cmd-row">
         <div class="cmd-row-inner">
-          <button class="cmd-btn" onclick="fireUbeiCmd('physicalAddress')">Enter Physical UBEI Address</button>
+          <button class="cmd-btn" onclick="fireUbieCmd('physicalAddress')">Enter Physical UBIE Address</button>
           <input class="cmd-input" id="in-u-physicalAddr" type="number" min="0" max="255" placeholder="No." value="0" oninput="refreshPreviews()">
         </div>
         <div class="cmd-preview" id="prev-u-physicalAddress"></div>
@@ -323,8 +323,8 @@
       <div class="cmd-row">
         <div class="cmd-row-inner" style="flex-wrap:wrap; gap:5px;">
           <input class="cmd-input dlc-input" id="in-u-dlc" type="text" maxlength="2" placeholder="DLC" value="2" oninput="refreshPreviews()" title="DLC" readonly>
-          <input class="cmd-input id-input"  id="in-u-readParam" type="text" placeholder="ID" value="00" oninput="autoUpdateUbeiDLC(); validateUbeiHex(); refreshPreviews();" title="ID">
-          <button class="cmd-btn read-btn" onclick="fireUbeiCmd('readParam')">Read</button>
+          <input class="cmd-input id-input"  id="in-u-readParam" type="text" placeholder="ID" value="00" oninput="autoUpdateUbieDLC(); validateUbieHex(); refreshPreviews();" title="ID">
+          <button class="cmd-btn read-btn" onclick="fireUbieCmd('readParam')">Read</button>
         </div>
         <div id="u-dlc-err" style="display:none; font-size:11px; color:var(--red); font-weight:600; padding: 2px 2px 0; line-height:1.4;">
           ⚠ ID must be even hex chars (e.g. 00, 76)
@@ -338,9 +338,9 @@
       <div class="cmd-row">
         <div class="cmd-row-inner" style="flex-wrap:wrap; gap:5px;">
           <input class="cmd-input" style="width:44px;flex:none;" id="in-u-editDlc" type="text" maxlength="2" placeholder="DLC" value="4" oninput="refreshPreviews()" title="DLC" readonly>
-          <input class="cmd-input" style="width:88px;flex:none;" id="in-u-editId"  type="text" placeholder="ID"    value="0B"   oninput="autoUpdateUbeiEditDLC(); validateUbeiEditHex(); refreshPreviews();" title="ID">
-          <input class="cmd-input" style="width:98px;flex:none;" id="in-u-editVal" type="text" placeholder="VALUE" value="0100" oninput="autoUpdateUbeiEditDLC(); validateUbeiEditHex(); refreshPreviews();" title="VALUE">
-          <button class="cmd-btn" style="flex:none;width:130px;padding:0 10px;" onclick="fireUbeiCmd('editParam')">Write</button>
+          <input class="cmd-input" style="width:88px;flex:none;" id="in-u-editId"  type="text" placeholder="ID"    value="0B"   oninput="autoUpdateUbieEditDLC(); validateUbieEditHex(); refreshPreviews();" title="ID">
+          <input class="cmd-input" style="width:98px;flex:none;" id="in-u-editVal" type="text" placeholder="VALUE" value="0100" oninput="autoUpdateUbieEditDLC(); validateUbieEditHex(); refreshPreviews();" title="VALUE">
+          <button class="cmd-btn" style="flex:none;width:130px;padding:0 10px;" onclick="fireUbieCmd('editParam')">Write</button>
         </div>
         <div id="u-edit-err" style="display:none; font-size:11px; color:var(--red); font-weight:600; padding:2px 2px 0; line-height:1.4;"></div>
         <div class="cmd-preview" id="prev-u-editParam"></div>
@@ -351,12 +351,12 @@
 
       <div class="cmd-row">
         <div class="cmd-row-inner">
-          <button class="cmd-btn" style="border-color:var(--red); color:var(--red);" onclick="fireUbeiCmd('bootloader')">Enter Bootloader Mode</button>
+          <button class="cmd-btn" style="border-color:var(--red); color:var(--red);" onclick="fireUbieCmd('bootloader')">Enter Bootloader Mode</button>
         </div>
         <div class="cmd-preview" id="prev-u-bootloader"></div>
       </div>
 
-      </div><!-- /ubei-body -->
+      </div><!-- /ubie-body -->
 
     </div>
   </div>

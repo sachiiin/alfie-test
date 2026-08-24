@@ -21,8 +21,8 @@ const CMD_MAP = {
   resetAllParam: a => `t${a}F150`,
 };
 
-// UBEI commands: different protocol from Alfie, uses t{No.}A instead of t{No.}F
-const UBEI_CMD_MAP = {
+// UBIE commands: different protocol from Alfie, uses t{No.}A instead of t{No.}F
+const UBIE_CMD_MAP = {
   reset:           _a => `t00A17C`,
   allDeviceStatus: _a => `t00A153`,
   deviceStatus:    (a) => `t${a}A153`,
@@ -135,14 +135,14 @@ async function fireCmd(key) {
   await sendCmd(cmd);
 }
 
-// ── UBEI command firing ──
+// ── UBIE command firing ──
 function numToHex2(val) {
   const n = parseInt(val, 10);
   if (isNaN(n) || n < 0) return '00';
   return n.toString(16).padStart(2, '0');
 }
 
-async function fireUbeiCmd(key) {
+async function fireUbieCmd(key) {
   if (key === 'readParam') {
     const idEl = document.getElementById('in-u-readParam');
     const idStr = idEl ? idEl.value.trim() : '';
@@ -157,51 +157,51 @@ async function fireUbeiCmd(key) {
     if (!valEl || !valEl.value.trim()) { addLog('WARN', 'Write Register: VALUE is required.'); return; }
     if (valEl.value.trim().length % 2 !== 0) { addLog('WARN', 'Write Register: VALUE must be even hex chars.'); return; }
   }
-  const cmd = buildUbeiCmd(key);
+  const cmd = buildUbieCmd(key);
   await sendCmd(cmd);
 }
 
-function getUbeiAddr() {
-  const el = document.getElementById('ubeiInput');
+function getUbieAddr() {
+  const el = document.getElementById('ubieInput');
   const num = parseInt(el ? el.value : '1', 10);
   if (isNaN(num) || num < 0) return '00';
   return num.toString(16).padStart(2, '0');
 }
 
-function buildUbeiCmd(key) {
-  const a = getUbeiAddr();
-  if (key === 'allDeviceStatus') return UBEI_CMD_MAP.allDeviceStatus(a);
+function buildUbieCmd(key) {
+  const a = getUbieAddr();
+  if (key === 'allDeviceStatus') return UBIE_CMD_MAP.allDeviceStatus(a);
   if (key === 'deviceStatus') {
     const v = document.getElementById('in-u-deviceStatus').value;
-    return UBEI_CMD_MAP.deviceStatus(numToHex2(v));
+    return UBIE_CMD_MAP.deviceStatus(numToHex2(v));
   }
   if (key === 'portStatus') {
     const p = document.getElementById('in-u-portStatus').value;
-    return UBEI_CMD_MAP.portStatus(a, numToHex2(p));
+    return UBIE_CMD_MAP.portStatus(a, numToHex2(p));
   }
   if (key === 'powerSources') {
     const v = document.getElementById('in-u-powerSources').value;
-    return UBEI_CMD_MAP.powerSources(numToHex2(v));
+    return UBIE_CMD_MAP.powerSources(numToHex2(v));
   }
   if (key === 'physicalAddress') {
     const v = document.getElementById('in-u-physicalAddr').value;
-    return UBEI_CMD_MAP.physicalAddress(numToHex2(v));
+    return UBIE_CMD_MAP.physicalAddress(numToHex2(v));
   }
   if (key === 'readParam') {
     const d   = document.getElementById('in-u-readParam').value.trim();
     const dlc = document.getElementById('in-u-dlc').value.trim();
-    return UBEI_CMD_MAP.readParam(a, d, dlc);
+    return UBIE_CMD_MAP.readParam(a, d, dlc);
   }
   if (key === 'editParam') {
     const id  = document.getElementById('in-u-editId').value.trim();
     const val = document.getElementById('in-u-editVal').value.trim();
     const dlc = document.getElementById('in-u-editDlc').value.trim();
-    return UBEI_CMD_MAP.editParam(a, id, val, dlc);
+    return UBIE_CMD_MAP.editParam(a, id, val, dlc);
   }
-  return UBEI_CMD_MAP[key](a);
+  return UBIE_CMD_MAP[key](a);
 }
 
-function autoUpdateUbeiDLC() {
+function autoUpdateUbieDLC() {
   const idEl  = document.getElementById('in-u-readParam');
   const dlcEl = document.getElementById('in-u-dlc');
   if (!idEl || !dlcEl) return;
@@ -210,7 +210,7 @@ function autoUpdateUbeiDLC() {
   dlcEl.value = String((idStr.length / 2) + 1);
 }
 
-function autoUpdateUbeiEditDLC() {
+function autoUpdateUbieEditDLC() {
   const idEl  = document.getElementById('in-u-editId');
   const valEl = document.getElementById('in-u-editVal');
   const dlcEl = document.getElementById('in-u-editDlc');
@@ -220,7 +220,7 @@ function autoUpdateUbeiEditDLC() {
   dlcEl.value = String((idLen + valLen) / 2 + 1);
 }
 
-function validateUbeiHex() {
+function validateUbieHex() {
   const el  = document.getElementById('in-u-readParam');
   const err = document.getElementById('u-dlc-err');
   if (!el || !err) return;
@@ -228,7 +228,7 @@ function validateUbeiHex() {
   err.style.display = (v.length > 0 && v.length % 2 !== 0) ? 'block' : 'none';
 }
 
-function validateUbeiEditHex() {
+function validateUbieEditHex() {
   const idEl  = document.getElementById('in-u-editId');
   const valEl = document.getElementById('in-u-editVal');
   const err   = document.getElementById('u-edit-err');
@@ -244,7 +244,7 @@ function validateUbeiEditHex() {
 
 // ── Collapsible section toggle (accordion) ──
 function toggleSection(id) {
-  const sections = ['alfie', 'ubei'];
+  const sections = ['alfie', 'ubie'];
   sections.forEach(s => {
     const body  = document.getElementById(s + '-body');
     const arrow = document.getElementById(s + '-arrow');
@@ -361,38 +361,38 @@ function refreshPreviews() {
     el.textContent = preview + '  [+' + eolLabel() + ']';
   });
 
-  // UBEI previews
-  const ubei = getUbeiAddr();
-  const uKeys = Object.keys(UBEI_CMD_MAP);
+  // UBIE previews
+  const ubie = getUbieAddr();
+  const uKeys = Object.keys(UBIE_CMD_MAP);
   uKeys.forEach(key => {
     const el = document.getElementById('prev-u-' + key);
     if (!el) return;
     let preview = '';
     if (key === 'allDeviceStatus') {
-      preview = UBEI_CMD_MAP.allDeviceStatus(ubei);
+      preview = UBIE_CMD_MAP.allDeviceStatus(ubie);
     } else if (key === 'deviceStatus') {
       const v = document.getElementById('in-u-deviceStatus') ? document.getElementById('in-u-deviceStatus').value : '1';
-      preview = UBEI_CMD_MAP.deviceStatus(numToHex2(v));
+      preview = UBIE_CMD_MAP.deviceStatus(numToHex2(v));
     } else if (key === 'portStatus') {
       const p = document.getElementById('in-u-portStatus') ? document.getElementById('in-u-portStatus').value : '1';
-      preview = UBEI_CMD_MAP.portStatus(ubei, numToHex2(p));
+      preview = UBIE_CMD_MAP.portStatus(ubie, numToHex2(p));
     } else if (key === 'powerSources') {
       const v = document.getElementById('in-u-powerSources') ? document.getElementById('in-u-powerSources').value : '0';
-      preview = UBEI_CMD_MAP.powerSources(numToHex2(v));
+      preview = UBIE_CMD_MAP.powerSources(numToHex2(v));
     } else if (key === 'physicalAddress') {
       const v = document.getElementById('in-u-physicalAddr') ? document.getElementById('in-u-physicalAddr').value : '0';
-      preview = UBEI_CMD_MAP.physicalAddress(numToHex2(v));
+      preview = UBIE_CMD_MAP.physicalAddress(numToHex2(v));
     } else if (key === 'readParam') {
       const d   = (document.getElementById('in-u-readParam') ? document.getElementById('in-u-readParam').value.trim() : '00') || '?';
       const dlc = (document.getElementById('in-u-dlc') ? document.getElementById('in-u-dlc').value.trim() : '2') || '2';
-      preview = UBEI_CMD_MAP.readParam(ubei, d, dlc);
+      preview = UBIE_CMD_MAP.readParam(ubie, d, dlc);
     } else if (key === 'editParam') {
       const id  = (document.getElementById('in-u-editId')  ? document.getElementById('in-u-editId').value.trim()  : '?') || '?';
       const val = (document.getElementById('in-u-editVal') ? document.getElementById('in-u-editVal').value.trim() : '?') || '?';
       const dlc = (document.getElementById('in-u-editDlc') ? document.getElementById('in-u-editDlc').value.trim() : '4') || '4';
-      preview = UBEI_CMD_MAP.editParam(ubei, id, val, dlc);
+      preview = UBIE_CMD_MAP.editParam(ubie, id, val, dlc);
     } else {
-      preview = UBEI_CMD_MAP[key] ? UBEI_CMD_MAP[key](ubei) : '';
+      preview = UBIE_CMD_MAP[key] ? UBIE_CMD_MAP[key](ubie) : '';
     }
     el.textContent = preview + '  [+' + eolLabel() + ']';
   });
@@ -715,8 +715,8 @@ const REPORT_FRAMES = {
   '72': { label: 'REGISTER REPORT',cls: 'rf-reg'  },
 };
 
-// UBEI-specific report frames
-const UBEI_REPORT_FRAMES = {
+// UBIE-specific report frames
+const UBIE_REPORT_FRAMES = {
   '69': { label: 'INFO REPORT',     cls: 'rf-info' },
   '72': { label: 'REGISTER REPORT', cls: 'rf-reg'  },
   '77': { label: 'WARNING REPORT',  cls: 'rf-warn' },
@@ -726,19 +726,19 @@ const UBEI_REPORT_FRAMES = {
   '62': { label: 'FAILURE REPORT',  cls: 'rf-fail' },
 };
 
-// ── UBEI Register Map ──
-const UBEI_REG_MAP = {
+// ── UBIE Register Map ──
+const UBIE_REG_MAP = {
   '00': 'Firmware Version',
   '2d': 'Address Mode',
   '73': 'Serial Number',
 };
 
-function getUbeiRegName(id) {
+function getUbieRegName(id) {
   const key = id.toLowerCase();
-  return UBEI_REG_MAP[key] || `Register ${parseInt(id, 16)}`;
+  return UBIE_REG_MAP[key] || `Register ${parseInt(id, 16)}`;
 }
 
-function decodeUbeiRegValueInline(regId, valueHex) {
+function decodeUbieRegValueInline(regId, valueHex) {
   if (regId === '2d') {
     const val = valueHex.substring(0, 4).toUpperCase();
     if (val === '0001') return 'Auto Address';
@@ -748,8 +748,8 @@ function decodeUbeiRegValueInline(regId, valueHex) {
   return `0x${valueHex.toUpperCase()} (${parseInt(valueHex, 16)})`;
 }
 
-// ── UBEI Connection lookup ──
-const UBEI_CONN = {
+// ── UBIE Connection lookup ──
+const UBIE_CONN = {
   '00': 'Nothing Connected',
   '01': 'Sink Device Connected',
   '02': 'No Device, Noise CC1',
@@ -760,8 +760,8 @@ const UBEI_CONN = {
   '07': 'Device No PD Connected',
 };
 
-// ── UBEI Port State lookup ──
-const UBEI_PORT_STATE = {
+// ── UBIE Port State lookup ──
+const UBIE_PORT_STATE = {
   '00': 'Idle No Connection',
   '01': 'Sink Connected',
   '02': 'Charged',
@@ -769,8 +769,8 @@ const UBEI_PORT_STATE = {
   '04': 'Short',
 };
 
-// ── 69 UBEI Info Report decoder ──
-function decodeUbeiInfoReport(s) {
+// ── 69 UBIE Info Report decoder ──
+function decodeUbieInfoReport(s) {
   if (s.length < 9) return '';
   const addr    = s.substring(1, 3);
   const subCode = s.substring(7, 9).toLowerCase();
@@ -779,10 +779,10 @@ function decodeUbeiInfoReport(s) {
     case '21': {
       // RESET_CAUSE
       const cause = s.length >= 17 ? s.substring(9, 17).toUpperCase() : '';
-      if (cause === 'E00003DF') return `UBEI ${addr} Soft Reset`;
-      if (cause === 'E0000043') return `UBEI ${addr} Reset Itself`;
-      if (cause === 'E00002DF') return `UBEI ${addr} Reset After Bootloader Mode`;
-      return `UBEI ${addr} Reset (${cause})`;
+      if (cause === 'E00003DF') return `UBIE ${addr} Soft Reset`;
+      if (cause === 'E0000043') return `UBIE ${addr} Reset Itself`;
+      if (cause === 'E00002DF') return `UBIE ${addr} Reset After Bootloader Mode`;
+      return `UBIE ${addr} Reset (${cause})`;
     }
     case '70': {
       // PORT_STATUS: {Port}{State}{Conn}{Voltage}{AmpHi}{AmpLo}
@@ -794,12 +794,12 @@ function decodeUbeiInfoReport(s) {
       const ampHi    = parseInt(s.substring(17, 19), 16);
       const ampLo    = parseInt(s.substring(19, 21), 16);
       if (isNaN(port)) return '';
-      const state = UBEI_PORT_STATE[stateHex] || stateHex;
-      const conn  = UBEI_CONN[connHex] || connHex;
+      const state = UBIE_PORT_STATE[stateHex] || stateHex;
+      const conn  = UBIE_CONN[connHex] || connHex;
       const volts = (voltage / 10).toFixed(1);
       const mA    = (ampHi << 8) | ampLo;
       const powerW = ((voltage / 10) * (mA / 1000)).toFixed(2);
-      return `UBEI ${addr} Port ${port} ${state}, ${conn}, ${volts}V, ${mA}mA, ${powerW}W`;
+      return `UBIE ${addr} Port ${port} ${state}, ${conn}, ${volts}V, ${mA}mA, ${powerW}W`;
     }
     case '73': {
       // DEVICE_STATUS: {State}{Layout}
@@ -816,7 +816,7 @@ function decodeUbeiInfoReport(s) {
       if (layoutHex & 4) ports.push('3');
       if (layoutHex & 8) ports.push('4');
       const layout = ports.length ? `Port ${ports.join(', ')} Connected` : 'No Port Connected';
-      return `UBEI ${addr} ${status}, ${layout}`;
+      return `UBIE ${addr} ${status}, ${layout}`;
     }
     case '63': {
       // CONNECTION_STATUS: {Port}{Conn}
@@ -824,8 +824,8 @@ function decodeUbeiInfoReport(s) {
       const port    = parseInt(s.substring(9, 11), 16);
       const connHex = s.substring(11, 13).toLowerCase();
       if (isNaN(port)) return '';
-      const conn = UBEI_CONN[connHex] || connHex;
-      return `UBEI ${addr} Port ${port} ${conn}`;
+      const conn = UBIE_CONN[connHex] || connHex;
+      return `UBIE ${addr} Port ${port} ${conn}`;
     }
     case '56': {
       // POWER_SUPPLY_STATUS: {USB}{RJ45}
@@ -836,15 +836,15 @@ function decodeUbeiInfoReport(s) {
       if (usb && rj45) src = 'Both [USB, RJ45]';
       else if (usb)    src = 'USB Only';
       else if (rj45)   src = 'RJ45 Only';
-      return `UBEI ${addr} Power Source: ${src}`;
+      return `UBIE ${addr} Power Source: ${src}`;
     }
     default:
       return '';
   }
 }
 
-// ── UBEI Register Report decoder (big-endian, no byte swap) ──
-function decodeUbeiRegReport(s) {
+// ── UBIE Register Report decoder (big-endian, no byte swap) ──
+function decodeUbieRegReport(s) {
   if (s.length < 9) return '';
   const regId = s.substring(7, 9).toLowerCase();
   const valueHex = s.length > 9 ? s.substring(9) : '';
@@ -862,7 +862,7 @@ function decodeUbeiRegReport(s) {
     return `Firmware Version: ${major}.${minor}.${build}`;
   }
   if (regId === '2d') {
-    // UBEI Address Mode
+    // UBIE Address Mode
     const val = valueHex.substring(0, 4).toUpperCase();
     if (val === '0001') return `Address Mode: Auto Address`;
     if (val === '0000') return `Address Mode: Manual Address`;
@@ -1104,8 +1104,8 @@ function decodeRegReport(s) {
   return `${reg.name}: ${decoded}`;
 }
 
-// ── 66 UBEI Failure Report decoder ──
-function decodeUbeiFailReport(s) {
+// ── 66 UBIE Failure Report decoder ──
+function decodeUbieFailReport(s) {
   if (s.length < 9) return '';
   const addr    = s.substring(1, 3);
   const subCode = s.substring(7, 9).toLowerCase();
@@ -1126,14 +1126,14 @@ function decodeUbeiFailReport(s) {
         'ff': 'Flash Write Fail',
       };
       const reasonMsg = reasons[reason] || `Unknown (0x${reason.toUpperCase()})`;
-      return `UBEI ${addr} Register ${regId} (Value: ${val}) fails to be written because ${reasonMsg}`;
+      return `UBIE ${addr} Register ${regId} (Value: ${val}) fails to be written because ${reasonMsg}`;
     }
     case '24':
-      return `UBEI ${addr} Frame Received is Unknown`;
+      return `UBIE ${addr} Frame Received is Unknown`;
     case '6b':
-      return `UBEI ${addr} Frame Received is Unknown`;
+      return `UBIE ${addr} Frame Received is Unknown`;
     case '6c':
-      return `UBEI ${addr} Frame Received is Unknown`;
+      return `UBIE ${addr} Frame Received is Unknown`;
     default:
       return '';
   }
@@ -1147,32 +1147,32 @@ function parseReportFrame(line) {
   const devType = s[3].toUpperCase();
   if (devType !== 'F' && devType !== 'A') return null;
   const frameCode = s.substring(5, 7).toLowerCase();
-  const isUbei = devType === 'A';
+  const isUbie = devType === 'A';
 
   // Pick the right frame map
-  const rf = isUbei ? UBEI_REPORT_FRAMES[frameCode] : REPORT_FRAMES[frameCode];
+  const rf = isUbie ? UBIE_REPORT_FRAMES[frameCode] : REPORT_FRAMES[frameCode];
   if (!rf) return null;
 
   let decodedMsg = '';
-  if (isUbei) {
-    // UBEI decoders
+  if (isUbie) {
+    // UBIE decoders
     if (frameCode === '69') {
-      decodedMsg = decodeUbeiInfoReport(s);
+      decodedMsg = decodeUbieInfoReport(s);
     } else if (frameCode === '72') {
-      decodedMsg = decodeUbeiRegReport(s);
+      decodedMsg = decodeUbieRegReport(s);
     } else if (frameCode === '77') {
-      // No UBEI warning sub-codes defined yet
+      // No UBIE warning sub-codes defined yet
       decodedMsg = '';
     } else if (frameCode === '66') {
-      decodedMsg = decodeUbeiFailReport(s);
+      decodedMsg = decodeUbieFailReport(s);
     } else if (frameCode === '23') {
-      decodedMsg = `UBEI ${s.substring(1, 3)} Entered Bootloader Mode`;
+      decodedMsg = `UBIE ${s.substring(1, 3)} Entered Bootloader Mode`;
     } else if (frameCode === '4f') {
       const addr = s.substring(1, 3);
       const addrDec = parseInt(addr, 16);
-      decodedMsg = `UBEI Assigned Address: 0x${addr.toUpperCase()} (${addrDec})`;
+      decodedMsg = `UBIE Assigned Address: 0x${addr.toUpperCase()} (${addrDec})`;
     } else if (frameCode === '62') {
-      decodedMsg = `UBEI ${s.substring(1, 3)} Entered Bootloader Mode`;
+      decodedMsg = `UBIE ${s.substring(1, 3)} Entered Bootloader Mode`;
     }
   } else {
     // Alfie decoders
@@ -1854,21 +1854,21 @@ function decodeCustomPreview() {
   }
 
   const addr = raw.substring(1, 3);
-  const isUbei = devType === 'A';
+  const isUbie = devType === 'A';
   const dlc = raw[4];
   const cmdData = raw.length > 5 ? raw.substring(5) : '';
   const cmdCode = cmdData.length >= 2 ? cmdData.substring(0, 2).toLowerCase() : '';
 
   const lines = [];
   let bgType = '';
-  const devLabel = isUbei ? 'UBEI' : 'ALFIE';
+  const devLabel = isUbie ? 'UBIE' : 'ALFIE';
   lines.push(`<span class="cd-label">${devLabel}</span> <span class="cd-val">${addr}</span>`);
   lines.push(`<span class="cd-label">DLC</span> <span class="cd-val">${dlc}</span>`);
 
-  // Check if it's a response (report frame) — works for both Alfie & UBEI via parseReportFrame
-  const ubeiReportCodes = ['69','72','77','66','23','4f','62'];
+  // Check if it's a response (report frame) — works for both Alfie & UBIE via parseReportFrame
+  const ubieReportCodes = ['69','72','77','66','23','4f','62'];
   const alfieReportCodes = ['73','77','66','72'];
-  const isReport = isUbei ? ubeiReportCodes.includes(cmdCode) : alfieReportCodes.includes(cmdCode);
+  const isReport = isUbie ? ubieReportCodes.includes(cmdCode) : alfieReportCodes.includes(cmdCode);
 
   if (isReport) {
     const rf = parseReportFrame(raw);
@@ -1887,12 +1887,12 @@ function decodeCustomPreview() {
     return;
   }
 
-  // ── UBEI Commands ──
-  if (isUbei) {
+  // ── UBIE Commands ──
+  if (isUbie) {
     switch (cmdCode) {
       case '7c':
         bgType = 'cdbg-info';
-        lines.push(`<span class="cd-badge cd-badge-info">RESET</span> <span class="cd-val">Reset UBEI</span>`);
+        lines.push(`<span class="cd-badge cd-badge-info">RESET</span> <span class="cd-val">Reset UBIE</span>`);
         break;
       case '73':
         bgType = 'cdbg-read';
@@ -1916,7 +1916,7 @@ function decodeCustomPreview() {
         bgType = 'cdbg-info';
         const sub = cmdData.length >= 4 ? cmdData.substring(2, 4) : '';
         if (sub === '01') {
-          lines.push(`<span class="cd-badge cd-badge-info">AUTO ADDRESS</span> <span class="cd-val">Enter Auto Address UBEI</span>`);
+          lines.push(`<span class="cd-badge cd-badge-info">AUTO ADDRESS</span> <span class="cd-val">Enter Auto Address UBIE</span>`);
         } else {
           lines.push(`<span class="cd-badge cd-badge-info">COMMAND 41</span> <span class="cd-val">Data: ${cmdData.substring(2).toUpperCase()}</span>`);
         }
@@ -1931,7 +1931,7 @@ function decodeCustomPreview() {
         const regData = cmdData.substring(2);
         lines.push(`<span class="cd-badge cd-badge-read">READ REGISTER</span>`);
         if (regData) {
-          const regName = getUbeiRegName(regData);
+          const regName = getUbieRegName(regData);
           lines.push(`<span class="cd-label">REGISTER</span> <span class="cd-val">${regName} (0x${regData.toUpperCase()})</span>`);
         }
         break;
@@ -1943,10 +1943,10 @@ function decodeCustomPreview() {
         if (regData.length >= 2) {
           const regId = regData.substring(0, 2);
           const val = regData.length > 2 ? regData.substring(2) : '';
-          const regName = getUbeiRegName(regId);
+          const regName = getUbieRegName(regId);
           lines.push(`<span class="cd-label">REGISTER</span> <span class="cd-val">${regName} (0x${regId.toUpperCase()})</span>`);
           if (val) {
-            const decoded = decodeUbeiRegValueInline(regId.toLowerCase(), val);
+            const decoded = decodeUbieRegValueInline(regId.toLowerCase(), val);
             lines.push(`<span class="cd-label">VALUE</span> <span class="cd-val">${decoded}</span>`);
           }
         }
@@ -2193,48 +2193,48 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') { e.preventDefault(); fireCmd('editParam'); }
   });
 
-  // ── UBEI Enter key listeners ──
+  // ── UBIE Enter key listeners ──
   // Device Status
   const uDevStatus = document.getElementById('in-u-deviceStatus');
   if (uDevStatus) uDevStatus.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); fireUbeiCmd('deviceStatus'); }
+    if (e.key === 'Enter') { e.preventDefault(); fireUbieCmd('deviceStatus'); }
   });
   // Port Status
   const uPortStatus = document.getElementById('in-u-portStatus');
   if (uPortStatus) uPortStatus.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); fireUbeiCmd('portStatus'); }
+    if (e.key === 'Enter') { e.preventDefault(); fireUbieCmd('portStatus'); }
   });
   // Power Sources
   const uPower = document.getElementById('in-u-powerSources');
   if (uPower) uPower.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); fireUbeiCmd('powerSources'); }
+    if (e.key === 'Enter') { e.preventDefault(); fireUbieCmd('powerSources'); }
   });
   // Physical Address
   const uPhysAddr = document.getElementById('in-u-physicalAddr');
   if (uPhysAddr) uPhysAddr.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); fireUbeiCmd('physicalAddress'); }
+    if (e.key === 'Enter') { e.preventDefault(); fireUbieCmd('physicalAddress'); }
   });
-  // UBEI Read Register
+  // UBIE Read Register
   const uReadId = document.getElementById('in-u-readParam');
   if (uReadId) uReadId.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); fireUbeiCmd('readParam'); }
+    if (e.key === 'Enter') { e.preventDefault(); fireUbieCmd('readParam'); }
   });
   const uReadDlc = document.getElementById('in-u-dlc');
   if (uReadDlc) uReadDlc.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); fireUbeiCmd('readParam'); }
+    if (e.key === 'Enter') { e.preventDefault(); fireUbieCmd('readParam'); }
   });
-  // UBEI Write Register
+  // UBIE Write Register
   const uEditId = document.getElementById('in-u-editId');
   if (uEditId) uEditId.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); fireUbeiCmd('editParam'); }
+    if (e.key === 'Enter') { e.preventDefault(); fireUbieCmd('editParam'); }
   });
   const uEditVal = document.getElementById('in-u-editVal');
   if (uEditVal) uEditVal.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); fireUbeiCmd('editParam'); }
+    if (e.key === 'Enter') { e.preventDefault(); fireUbieCmd('editParam'); }
   });
   const uEditDlc = document.getElementById('in-u-editDlc');
   if (uEditDlc) uEditDlc.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); fireUbeiCmd('editParam'); }
+    if (e.key === 'Enter') { e.preventDefault(); fireUbieCmd('editParam'); }
   });
 
   // Ctrl+L / Cmd+L: clear log
