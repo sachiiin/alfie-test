@@ -265,17 +265,19 @@
       <div class="cmd-section">Normal Commands</div>
 
       <div class="cmd-row">
-        <div class="cmd-row-inner">
+        <div class="cmd-row-inner" style="gap:6px;">
           <button class="cmd-btn" onclick="fireUbieCmd('reset')">Reset UBIE</button>
+          <button class="cmd-btn" onclick="fireUbieCmd('oldReset')">Old Reset UBIE</button>
         </div>
         <div class="cmd-preview" id="prev-u-reset"></div>
       </div>
 
       <div class="cmd-row">
         <div class="cmd-row-inner">
-          <button class="cmd-btn" onclick="fireUbieCmd('allDeviceStatus')">All Device Status</button>
+          <button class="cmd-btn" onclick="fireUbieCmd('deviceStatusExt')">Device Status Extended</button>
+          <input class="cmd-input" id="in-u-deviceStatusExt" type="number" min="0" max="255" placeholder="No." value="1" oninput="refreshPreviews()">
         </div>
-        <div class="cmd-preview" id="prev-u-allDeviceStatus"></div>
+        <div class="cmd-preview" id="prev-u-deviceStatusExt"></div>
       </div>
 
       <div class="cmd-row">

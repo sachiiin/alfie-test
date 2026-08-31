@@ -24,7 +24,8 @@ const CMD_MAP = {
 // UBIE commands: different protocol from Alfie, uses t{No.}A instead of t{No.}F
 const UBIE_CMD_MAP = {
   reset:           _a => `t00A17C`,
-  allDeviceStatus: _a => `t00A153`,
+  oldReset:        _a => `t00A121`,
+  deviceStatusExt: (a) => `t${a}A15A`,
   deviceStatus:    (a) => `t${a}A153`,
   portStatus:      (a, p) => `t${a}A250${p}`,
   powerSources:    (val) => `t${val}A156`,
@@ -171,6 +172,10 @@ function getUbieAddr() {
 function buildUbieCmd(key) {
   const a = getUbieAddr();
   if (key === 'allDeviceStatus') return UBIE_CMD_MAP.allDeviceStatus(a);
+  if (key === 'deviceStatusExt') {
+    const v = document.getElementById('in-u-deviceStatusExt').value;
+    return UBIE_CMD_MAP.deviceStatusExt(numToHex2(v));
+  }
   if (key === 'deviceStatus') {
     const v = document.getElementById('in-u-deviceStatus').value;
     return UBIE_CMD_MAP.deviceStatus(numToHex2(v));
@@ -370,6 +375,9 @@ function refreshPreviews() {
     let preview = '';
     if (key === 'allDeviceStatus') {
       preview = UBIE_CMD_MAP.allDeviceStatus(ubie);
+    } else if (key === 'deviceStatusExt') {
+      const v = document.getElementById('in-u-deviceStatusExt') ? document.getElementById('in-u-deviceStatusExt').value : '1';
+      preview = UBIE_CMD_MAP.deviceStatusExt(numToHex2(v));
     } else if (key === 'deviceStatus') {
       const v = document.getElementById('in-u-deviceStatus') ? document.getElementById('in-u-deviceStatus').value : '1';
       preview = UBIE_CMD_MAP.deviceStatus(numToHex2(v));
@@ -837,6 +845,28 @@ function decodeUbieInfoReport(s) {
       else if (usb)    src = 'USB Only';
       else if (rj45)   src = 'RJ45 Only';
       return `UBIE ${addr} Power Source: ${src}`;
+    }
+    case '7a': {
+      // DEVICE_STATUS_EXTENDED: {State}{Layout}{USB}{RJ45}
+      if (s.length < 17) return '';
+      const stateHex  = s.substring(9, 11).toLowerCase();
+      const layoutHex = parseInt(s.substring(11, 13), 16);
+      const usb  = s.substring(13, 15) === '01';
+      const rj45 = s.substring(15, 17) === '01';
+      let status = 'No Problems';
+      if (stateHex === '01') status = 'Warnings';
+      else if (stateHex === '02') status = 'Failures';
+      const ports = [];
+      if (layoutHex & 1) ports.push('1');
+      if (layoutHex & 2) ports.push('2');
+      if (layoutHex & 4) ports.push('3');
+      if (layoutHex & 8) ports.push('4');
+      const layout = ports.length ? `Port ${ports.join(', ')} Connected` : 'No Port Connected';
+      let src = 'No Power';
+      if (usb && rj45) src = 'Both [USB, RJ45]';
+      else if (usb)    src = 'USB Only';
+      else if (rj45)   src = 'RJ45 Only';
+      return `UBIE ${addr} ${status}, ${layout}, Power Source: ${src}`;
     }
     default:
       return '';
@@ -1902,6 +1932,14 @@ function decodeCustomPreview() {
         bgType = 'cdbg-read';
         lines.push(`<span class="cd-badge cd-badge-read">STATUS</span> <span class="cd-val">${addr === '00' ? 'All Device Status' : `Device Status ${addr} (${parseInt(addr, 16)})`}</span>`);
         break;
+      case '5a':
+        bgType = 'cdbg-read';
+        lines.push(`<span class="cd-badge cd-badge-read">STATUS EXT</span> <span class="cd-val">Device Status Extended ${addr} (${parseInt(addr, 16)})</span>`);
+        break;
+      case '21':
+        bgType = 'cdbg-info';
+        lines.push(`<span class="cd-badge cd-badge-info">OLD RESET</span> <span class="cd-val">Old Reset UBIE</span>`);
+        break;
       case '50': {
         bgType = 'cdbg-read';
         const port = cmdData.length >= 4 ? parseInt(cmdData.substring(2, 4), 16) : '?';
@@ -2198,6 +2236,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const uDevStatus = document.getElementById('in-u-deviceStatus');
   if (uDevStatus) uDevStatus.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); fireUbieCmd('deviceStatus'); }
+  });
+  // Device Status Extended
+  const uDevStatusExt = document.getElementById('in-u-deviceStatusExt');
+  if (uDevStatusExt) uDevStatusExt.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); fireUbieCmd('deviceStatusExt'); }
   });
   // Port Status
   const uPortStatus = document.getElementById('in-u-portStatus');
