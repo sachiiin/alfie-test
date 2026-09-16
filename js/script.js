@@ -798,27 +798,26 @@ function decodeUbieInfoReport(s) {
       return `UBIE ${addr} RJ45 Power Connected`;
     case '70': {
       // PORT_STATUS: {Port}{State}{Conn}{Voltage}{AmpHi}{AmpLo}
-      // State byte: bits 0-3 = base state, upper nibble flag = 12V power loss
-      // Conn byte: bits 0-3 = base connection, upper nibble flag = 5V power loss
+      // Conn byte: lower nibble = connection (0=Nothing, 1=Sink Connected),
+      //            upper nibble = power flag (0=OK, 1=5V Power Loss, 2=12V Power Loss)
       if (s.length < 21) return '';
       const port = parseInt(s.substring(9, 11), 16);
-      const stateRaw = parseInt(s.substring(11, 13), 16);
+      const stateHex = s.substring(11, 13).toLowerCase();
       const connRaw  = parseInt(s.substring(13, 15), 16);
       const voltage  = parseInt(s.substring(15, 17), 16);
       const ampHi    = parseInt(s.substring(17, 19), 16);
       const ampLo    = parseInt(s.substring(19, 21), 16);
-      if (isNaN(port) || isNaN(stateRaw) || isNaN(connRaw)) return '';
-      const baseStateHex = (stateRaw & 0x0F).toString(16).padStart(2, '0');
-      const baseConnHex  = (connRaw & 0x0F).toString(16).padStart(2, '0');
-      const state = UBIE_PORT_STATE[baseStateHex] || baseStateHex;
+      if (isNaN(port) || isNaN(connRaw)) return '';
+      const state = UBIE_PORT_STATE[stateHex] || stateHex;
+      const baseConnHex = (connRaw & 0x0F).toString(16).padStart(2, '0');
       const conn  = UBIE_CONN[baseConnHex] || baseConnHex;
       const volts = (voltage / 10).toFixed(1);
       const mA    = (ampHi << 8) | ampLo;
       const powerW = ((voltage / 10) * (mA / 1000)).toFixed(2);
-      const flags = [];
-      if (stateRaw & 0xF0) flags.push('<span style="color:var(--red); font-weight:700;">12V Power Loss</span>');
-      if (connRaw & 0xF0) flags.push('<span style="color:var(--red); font-weight:700;">5V Power Loss</span>');
-      const flagStr = flags.length ? `, ${flags.join(', ')}` : '';
+      const powerFlag = (connRaw >> 4) & 0x0F;
+      let flagStr = '';
+      if (powerFlag === 1) flagStr = ', <span style="color:var(--red); font-weight:700;">5V Power Loss</span>';
+      else if (powerFlag === 2) flagStr = ', <span style="color:var(--red); font-weight:700;">12V Power Loss</span>';
       return `UBIE ${addr} Port ${port} ${state}${flagStr}, ${conn}, ${volts}V, ${mA}mA, ${powerW}W`;
     }
     case '73': {
