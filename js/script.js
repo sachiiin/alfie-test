@@ -792,22 +792,34 @@ function decodeUbieInfoReport(s) {
       if (cause === 'E00002DF') return `UBIE ${addr} Reset After Bootloader Mode`;
       return `UBIE ${addr} Reset (${cause})`;
     }
+    case '05':
+      return `UBIE ${addr} USB Power Connected`;
+    case '2c':
+      return `UBIE ${addr} RJ45 Power Connected`;
     case '70': {
       // PORT_STATUS: {Port}{State}{Conn}{Voltage}{AmpHi}{AmpLo}
+      // State byte: bits 0-3 = base state, upper nibble flag = 12V power loss
+      // Conn byte: bits 0-3 = base connection, upper nibble flag = 5V power loss
       if (s.length < 21) return '';
       const port = parseInt(s.substring(9, 11), 16);
-      const stateHex = s.substring(11, 13).toLowerCase();
-      const connHex  = s.substring(13, 15).toLowerCase();
+      const stateRaw = parseInt(s.substring(11, 13), 16);
+      const connRaw  = parseInt(s.substring(13, 15), 16);
       const voltage  = parseInt(s.substring(15, 17), 16);
       const ampHi    = parseInt(s.substring(17, 19), 16);
       const ampLo    = parseInt(s.substring(19, 21), 16);
-      if (isNaN(port)) return '';
-      const state = UBIE_PORT_STATE[stateHex] || stateHex;
-      const conn  = UBIE_CONN[connHex] || connHex;
+      if (isNaN(port) || isNaN(stateRaw) || isNaN(connRaw)) return '';
+      const baseStateHex = (stateRaw & 0x0F).toString(16).padStart(2, '0');
+      const baseConnHex  = (connRaw & 0x0F).toString(16).padStart(2, '0');
+      const state = UBIE_PORT_STATE[baseStateHex] || baseStateHex;
+      const conn  = UBIE_CONN[baseConnHex] || baseConnHex;
       const volts = (voltage / 10).toFixed(1);
       const mA    = (ampHi << 8) | ampLo;
       const powerW = ((voltage / 10) * (mA / 1000)).toFixed(2);
-      return `UBIE ${addr} Port ${port} ${state}, ${conn}, ${volts}V, ${mA}mA, ${powerW}W`;
+      const flags = [];
+      if (stateRaw & 0xF0) flags.push('<span style="color:var(--red); font-weight:700;">12V Power Loss</span>');
+      if (connRaw & 0xF0) flags.push('<span style="color:var(--red); font-weight:700;">5V Power Loss</span>');
+      const flagStr = flags.length ? `, ${flags.join(', ')}` : '';
+      return `UBIE ${addr} Port ${port} ${state}${flagStr}, ${conn}, ${volts}V, ${mA}mA, ${powerW}W`;
     }
     case '73': {
       // DEVICE_STATUS: {State}{Layout}
@@ -1164,6 +1176,10 @@ function decodeUbieFailReport(s) {
       return `UBIE ${addr} Frame Received is Unknown`;
     case '6c':
       return `UBIE ${addr} Frame Received is Unknown`;
+    case '05':
+      return `UBIE ${addr} USB Power Disconnected`;
+    case '2c':
+      return `UBIE ${addr} RJ45 Power Disconnected`;
     default:
       return '';
   }
@@ -1909,7 +1925,7 @@ function decodeCustomPreview() {
       else if (rf.cls === 'rf-fail')  { bgType = 'cdbg-error'; badgeCls = 'cd-badge-error'; }
       else if (rf.cls === 'rf-reg')   { bgType = 'cdbg-register'; badgeCls = 'cd-badge-register'; }
       lines.push(`<span class="cd-badge ${badgeCls}">${rf.label}</span>`);
-      if (rf.decodedMsg) lines.push(`<span class="cd-val">${esc(rf.decodedMsg)}</span>`);
+      if (rf.decodedMsg) lines.push(`<span class="cd-val">${rf.decodedMsg}</span>`);
     }
     box.className = bgType;
     box.innerHTML = lines.join('<br>');
