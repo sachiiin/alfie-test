@@ -1643,14 +1643,18 @@ function fmtLogTs(d) {
 }
 
 async function downloadRawLog() {
-  if (rawLog.length === 0) { addLog('WARN', 'No commands sent/received yet.'); return; }
+  if (rawLog.length === 0) {
+    addLog('WARN', 'No commands sent/received yet — connect a port and run some commands first.');
+    return;
+  }
+
+  addLog('INFO', 'Preparing PDF…');
 
   let jsPDF;
   try {
-    addLog('INFO', 'Loading PDF library…');
     jsPDF = await loadJsPDF();
   } catch (e) {
-    addLog('WARN', 'PDF library unavailable. Exporting as text.');
+    addLog('WARN', 'PDF library failed to load. Falling back to text export.');
     downloadRawLogText();
     return;
   }
@@ -1665,7 +1669,7 @@ async function downloadRawLog() {
 
     const exportDate = fmtLogTs(new Date());
 
-    function drawHeader() {
+    function drawPageHeader() {
       doc.setFillColor(255, 255, 255);
       doc.rect(0, 0, pageW, 16, 'F');
       doc.setDrawColor(200, 197, 188);
@@ -1682,12 +1686,12 @@ async function downloadRawLog() {
 
     doc.setFont('courier', 'normal');
     doc.setFontSize(8.5);
-    drawHeader();
+    drawPageHeader();
 
     function ensureSpace() {
       if (y + lineH > pageH - marginB) {
         doc.addPage();
-        drawHeader();
+        drawPageHeader();
         doc.setFont('courier', 'normal');
         doc.setFontSize(8.5);
         y = marginT;
@@ -1699,7 +1703,8 @@ async function downloadRawLog() {
       const color = entry.dir === 'TX' ? [26, 95, 168] : [123, 63, 168];
       const dirArrow = entry.dir === 'TX' ? '>>' : '<<';
       doc.setTextColor(...color);
-      doc.text(`(${fmtLogTs(entry.ts)}) (${portLabel}) (${dirArrow}) ${entry.text}`, marginL, y);
+      const line = `(${fmtLogTs(entry.ts)}) (${portLabel}) (${dirArrow}) ${entry.text}`;
+      doc.text(line, marginL, y);
       y += lineH;
     });
 
@@ -1713,10 +1718,10 @@ async function downloadRawLog() {
       doc.text('Alfie Test Portal — Command Log', marginL, pageH - 5);
     }
 
-    doc.save(`alfie-commands-${Date.now()}.pdf`);
-    addLog('OK', `Command log exported as PDF (${rawLog.length} entries).`);
+    doc.save(`alfie-logs-${Date.now()}.pdf`);
+    addLog('OK', `Logs exported as PDF (${rawLog.length} entries, ${totalPages} page${totalPages > 1 ? 's' : ''}).`);
   } catch (e) {
-    addLog('ERR', 'PDF export failed: ' + e.message + '. Exporting as text.');
+    addLog('ERR', 'PDF export failed: ' + e.message + '. Falling back to text export.');
     downloadRawLogText();
   }
 }
