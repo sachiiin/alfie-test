@@ -439,6 +439,9 @@ async function openPort() {
     addLog('OK', `Port opened \u2014 VID:0x${hex(info.usbVendorId)} PID:0x${hex(info.usbProductId)} @ ${baud} baud`);
     setConnected(true);
     startReader();
+    // Auto-turn off timestamp on connect
+    await delay(300);
+    await toggleTimestamp();
   } catch(e) {
     addLog('ERR', 'Failed to open port: ' + e.message);
     port = null; writer = null;
@@ -951,6 +954,7 @@ const REGISTER_MAP = {
   '1c': { name: 'Current Limit Switch Retry On Delay', unit: 'ms' },
   '1d': { name: 'LED Strip Mode',                      unit: 'ledmode' },
   '1e': { name: 'Latch Self Detect Delay',             unit: 'ms' },
+  '20': { name: 'PCB PN',                               unit: 'pcbpn' },
   '23': { name: 'Serial Number',                       unit: 'serial' },
   '41': { name: 'Instant Voltage',                     unit: 'mv' },
   '42': { name: 'Average Voltage',                     unit: 'mv' },
@@ -1087,6 +1091,14 @@ function decodeRegValue(unit, valueHex) {
     case 'serial': {
       if (valueHex.length < 8) return valueHex.toUpperCase();
       return swapBytesHex(valueHex.substring(0, 8)).toUpperCase();
+    }
+    case 'pcbpn': {
+      // 2 bytes little-endian → swap → decimal with E prefix
+      if (valueHex.length < 4) return valueHex.toUpperCase();
+      const swapped = swapBytesHex(valueHex.substring(0, 4));
+      const dec = parseInt(swapped, 16);
+      if (isNaN(dec)) return valueHex.toUpperCase();
+      return `E${String(dec).padStart(4, '0')}`;
     }
     case 'bitmap': {
       // 3-byte bitmap: latches 1-8, 9-16, 17
@@ -1678,8 +1690,10 @@ async function downloadLog() {
     doc.text('Activity Log Export', marginL + 42, 9);
 
     // Right side: date + page
-    const dateStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) +
-      '  ' + new Date().toLocaleTimeString('en-GB', { hour12: false });
+    const _nd = new Date();
+    const _pad = (n, l) => String(n).padStart(l || 2, '0');
+    const dateStr = `${_nd.getFullYear()}-${_pad(_nd.getMonth()+1)}-${_pad(_nd.getDate())}  ` +
+      `${_pad(_nd.getHours())}:${_pad(_nd.getMinutes())}:${_pad(_nd.getSeconds())}.${_pad(_nd.getMilliseconds(), 3)}`;
     doc.text(dateStr, pageW - marginR, 9, { align: 'right' });
 
     // Column headers
@@ -1817,8 +1831,9 @@ function decToHex(d) {
 
 function nowStr() {
   const d = new Date();
-  const date = d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
-  const time = d.toLocaleTimeString('en-GB', { hour12: false });
+  const pad = (n, l) => String(n).padStart(l || 2, '0');
+  const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
   return date + '  ' + time;
 }
 

@@ -388,7 +388,7 @@ body {
 
 .log-row {
   display: grid;
-  grid-template-columns: 190px 48px 1fr;
+  grid-template-columns: 240px 48px 1fr;
   gap: 0 10px;
   font-family: var(--mono);
   font-size: 14px;
