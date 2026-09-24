@@ -1611,6 +1611,7 @@ function addLog(type, msg) {
 
 function clearLog() {
   document.getElementById('logWrap').innerHTML = '';
+  rawLog = [];
   addLog('INFO', 'Log cleared.');
 }
 
