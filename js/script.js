@@ -4,6 +4,8 @@
 
 const HAS_API = ('serial' in navigator);
 let port = null, writer = null;
+let portLabel = 'PORT';
+let rawLog = [];  // { ts: Date, dir: 'TX'|'RX', text: string }
 let tsState = 'on';
 
 // ── Command definitions ──
@@ -269,6 +271,7 @@ async function sendCmd(raw) {
   const encoded = new TextEncoder().encode(full);
   if (writer) {
     await writer.write(encoded);
+    rawLog.push({ ts: new Date(), dir: 'TX', text: raw });
     addLog('CMD', `> ${raw}`);
   } else {
     addLog('CMD', `[preview] ${raw}`);
@@ -436,6 +439,8 @@ async function openPort() {
     await port.open({ baudRate: baud });
     const info = port.getInfo();
     writer = port.writable.getWriter();
+    portLabel = `VID${hex(info.usbVendorId)}`;
+    rawLog = [];
     addLog('OK', `Port opened \u2014 VID:0x${hex(info.usbVendorId)} PID:0x${hex(info.usbProductId)} @ ${baud} baud`);
     setConnected(true);
     startReader();
@@ -472,6 +477,7 @@ function startReader() {
         }
         if (pendingLines.length) {
           pendingLines.forEach(l => {
+            rawLog.push({ ts: new Date(), dir: 'RX', text: l });
             addLog('RX', l);
             if (rxCallback) rxCallback(l);
           });
@@ -1631,192 +1637,95 @@ function loadJsPDF() {
   });
 }
 
-async function downloadLog() {
-  const rows = [...document.querySelectorAll('#logWrap .log-row')];
-  if (rows.length === 0) { addLog('WARN', 'No log entries to export.'); return; }
+function fmtLogTs(d) {
+  const pad = (n, l) => String(n).padStart(l || 2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}  ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(),3)}`;
+}
+
+async function downloadRawLog() {
+  if (rawLog.length === 0) { addLog('WARN', 'No commands sent/received yet.'); return; }
 
   let jsPDF;
   try {
-    addLog('INFO', 'Loading PDF library\u2026');
+    addLog('INFO', 'Loading PDF library…');
     jsPDF = await loadJsPDF();
   } catch (e) {
     addLog('WARN', 'PDF library unavailable. Exporting as text.');
-    downloadLogText();
+    downloadRawLogText();
     return;
   }
 
   try {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const marginL = 10, marginT = 22, marginB = 10;
+    const lineH = 5;
+    let y = marginT;
 
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-  const marginL = 10, marginR = 10, marginT = 20, marginB = 12;
-  const usableW = pageW - marginL - marginR;
-  const lineH = 5.5;
+    const exportDate = fmtLogTs(new Date());
 
-  // Colors per log type
-  const TYPE_COLORS = {
-    CMD:  [26, 95, 168],
-    INFO: [112, 110, 104],
-    OK:   [42, 122, 75],
-    ERR:  [176, 48, 48],
-    WARN: [138, 90, 0],
-    RX:   [123, 63, 168],
-  };
-  const BG_COLORS = {
-    CMD:  [232, 240, 251],
-    RX:   [245, 232, 255],
-  };
-
-  // Column widths (mm)
-  const colTs = 52, colType = 14;
-  const colMsg = usableW - colTs - colType;
-
-  function drawHeader(pageNum, totalText) {
-    // Header bar
-    doc.setFillColor(255, 255, 255);
-    doc.rect(0, 0, pageW, 14, 'F');
-    doc.setDrawColor(200, 197, 188);
-    doc.line(0, 14, pageW, 14);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(28, 27, 24);
-    doc.text('Alfie Test Portal', marginL, 9);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(112, 110, 104);
-    doc.text('Activity Log Export', marginL + 42, 9);
-
-    // Right side: date + page
-    const _nd = new Date();
-    const _pad = (n, l) => String(n).padStart(l || 2, '0');
-    const dateStr = `${_nd.getFullYear()}-${_pad(_nd.getMonth()+1)}-${_pad(_nd.getDate())}  ` +
-      `${_pad(_nd.getHours())}:${_pad(_nd.getMinutes())}:${_pad(_nd.getSeconds())}.${_pad(_nd.getMilliseconds(), 3)}`;
-    doc.text(dateStr, pageW - marginR, 9, { align: 'right' });
-
-    // Column headers
-    doc.setFillColor(237, 234, 227);
-    doc.rect(marginL, 15, usableW, 5, 'F');
-    doc.setFont('courier', 'bold');
-    doc.setFontSize(7);
-    doc.setTextColor(112, 110, 104);
-    doc.text('TIMESTAMP', marginL + 1, 18.5);
-    doc.text('TYPE', marginL + colTs + 1, 18.5);
-    doc.text('MESSAGE', marginL + colTs + colType + 1, 18.5);
-  }
-
-  // Parse rows
-  const entries = rows.map(r => {
-    const spans = r.querySelectorAll('span');
-    const ts = spans[0]?.textContent || '';
-    const type = spans[1]?.textContent?.trim() || '';
-    const msg = spans[2]?.textContent || '';
-    return { ts, type, msg };
-  });
-
-  let y = marginT + 2;
-  let page = 1;
-  drawHeader(page);
-
-  entries.forEach((entry, idx) => {
-    // Check page break
-    if (y + lineH > pageH - marginB) {
-      doc.addPage();
-      page++;
-      drawHeader(page);
-      y = marginT + 2;
+    function drawHeader() {
+      doc.setFillColor(255, 255, 255);
+      doc.rect(0, 0, pageW, 16, 'F');
+      doc.setDrawColor(200, 197, 188);
+      doc.line(0, 16, pageW, 16);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(28, 27, 24);
+      doc.text('Alfie Test Portal — Command Log', marginL, 8);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(112, 110, 104);
+      doc.text(exportDate, pageW - marginL, 13, { align: 'right' });
     }
 
-    // Row background for CMD and RX
-    const bgColor = BG_COLORS[entry.type];
-    if (bgColor) {
-      doc.setFillColor(...bgColor);
-      doc.rect(marginL, y - 3.5, usableW, lineH, 'F');
-    }
-
-    // Divider line between different types
-    if (idx > 0) {
-      const prevType = entries[idx - 1].type;
-      const needsDivider =
-        (entry.type === 'CMD' && prevType !== null) ||
-        (entry.type === 'RX' && prevType !== 'RX') ||
-        (entry.type !== 'RX' && entry.type !== 'CMD' && prevType === 'RX');
-      if (needsDivider) {
-        doc.setDrawColor(200, 197, 188);
-        doc.setLineWidth(0.2);
-        doc.line(marginL, y - 4.2, marginL + usableW, y - 4.2);
-      }
-    }
-
-    // Timestamp
     doc.setFont('courier', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(155, 152, 145);
-    doc.text(entry.ts, marginL + 1, y);
+    doc.setFontSize(8.5);
+    drawHeader();
 
-    // Type badge
-    const tc = TYPE_COLORS[entry.type] || [112, 110, 104];
-    doc.setFont('courier', 'bold');
-    doc.setFontSize(7);
-    doc.setTextColor(...tc);
-    doc.text(entry.type, marginL + colTs + 1, y);
-
-    // Message - handle long text with wrapping
-    doc.setFont('courier', entry.type === 'CMD' || entry.type === 'RX' ? 'bold' : 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(...tc);
-    const msgX = marginL + colTs + colType + 1;
-    const maxMsgW = colMsg - 2;
-    const msgLines = doc.splitTextToSize(entry.msg, maxMsgW);
-    doc.text(msgLines[0] || '', msgX, y);
-
-    // Extra wrapped lines
-    for (let i = 1; i < msgLines.length; i++) {
-      y += lineH;
+    function ensureSpace() {
       if (y + lineH > pageH - marginB) {
         doc.addPage();
-        page++;
-        drawHeader(page);
-        y = marginT + 2;
+        drawHeader();
+        doc.setFont('courier', 'normal');
+        doc.setFontSize(8.5);
+        y = marginT;
       }
-      if (bgColor) {
-        doc.setFillColor(...bgColor);
-        doc.rect(marginL, y - 3.5, usableW, lineH, 'F');
-      }
-      doc.text(msgLines[i], msgX, y);
     }
 
-    y += lineH;
-  });
+    rawLog.forEach(entry => {
+      ensureSpace();
+      const color = entry.dir === 'TX' ? [26, 95, 168] : [123, 63, 168];
+      const dirArrow = entry.dir === 'TX' ? '>>' : '<<';
+      doc.setTextColor(...color);
+      doc.text(`(${fmtLogTs(entry.ts)}) (${portLabel}) (${dirArrow}) ${entry.text}`, marginL, y);
+      y += lineH;
+    });
 
-  // Footer on all pages
-  const totalPages = doc.internal.getNumberOfPages();
-  for (let i = 1; i <= totalPages; i++) {
-    doc.setPage(i);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(155, 152, 145);
-    doc.text(`Page ${i} of ${totalPages}`, pageW - marginR, pageH - 5, { align: 'right' });
-    doc.text('Signifi — Alfie Test Portal', marginL, pageH - 5);
-  }
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`Page ${i} of ${totalPages}`, pageW - marginL, pageH - 5, { align: 'right' });
+      doc.text('Alfie Test Portal — Command Log', marginL, pageH - 5);
+    }
 
-  doc.save(`alfie-log-${Date.now()}.pdf`);
-  addLog('OK', `Log exported as PDF (${entries.length} entries, ${totalPages} page${totalPages > 1 ? 's' : ''}).`);
+    doc.save(`alfie-commands-${Date.now()}.pdf`);
+    addLog('OK', `Command log exported as PDF (${rawLog.length} entries).`);
   } catch (e) {
     addLog('ERR', 'PDF export failed: ' + e.message + '. Exporting as text.');
-    downloadLogText();
+    downloadRawLogText();
   }
 }
 
-// Fallback text export
-function downloadLogText() {
-  const rows = [...document.querySelectorAll('#logWrap .log-row')];
-  const text = rows.map(r => [...r.querySelectorAll('span')].map(s => s.textContent).join('  ')).join('\n');
+function downloadRawLogText() {
+  const text = rawLog.map(e => `(${fmtLogTs(e.ts)}) (${portLabel}) (${e.dir === 'TX' ? '>>' : '<<'}) ${e.text}`).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-  a.download = `alfie-log-${Date.now()}.txt`;
+  a.download = `alfie-commands-${Date.now()}.txt`;
   a.click();
 }
 
