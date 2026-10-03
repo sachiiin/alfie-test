@@ -5,7 +5,7 @@
 const HAS_API = ('serial' in navigator);
 let port = null, writer = null;
 let portLabel = 'PORT';
-let rawLog = [];  // { ts: Date, dir: 'TX'|'RX', text: string }
+let rawLog = [];  // Every Activity Log entry: { ts: Date, type, dir: 'TX'|'RX'|'', text, port }
 let tsState = 'on';
 
 // ── Command definitions ──
@@ -21,6 +21,10 @@ const CMD_MAP = {
   readParam:    (a, d, dlc) => `t${a}F${dlc}52${d}`,
   editParam:    (a, id, val, dlc) => `t${a}F${dlc}57${id}${val}`,
   resetAllParam: a => `t${a}F150`,
+  // PCB Module Change — register 0x16, per latch: t{Alfie}F55716{Latch hex}{value}
+  pcbDefault:   (a, d) => `t${a}F55716${decToHex(d)}FFFF`,
+  pcbWaterfall: (a, d) => `t${a}F55716${decToHex(d)}0300`,
+  pcbSensor:    (a, d) => `t${a}F55716${decToHex(d)}0100`,
 };
 
 // UBIE commands: different protocol from Alfie, uses t{No.}A instead of t{No.}F
@@ -130,6 +134,16 @@ async function fireCmd(key) {
     const val = el ? el.value.trim() : '';
     if (!val) {
       addLog('WARN', `${key === 'openDoor' ? 'Open Door' : 'Door Status'}: Door number is required.`);
+      if (el) { el.focus(); el.style.borderColor = 'var(--red)'; setTimeout(() => el.style.borderColor = '', 1200); }
+      return;
+    }
+  }
+  // ── PCB Module Change: latch number required (decimal) ──
+  if (key === 'pcbDefault' || key === 'pcbWaterfall' || key === 'pcbSensor') {
+    const el = document.getElementById('in-' + key);
+    const val = el ? el.value.trim() : '';
+    if (!/^\d+$/.test(val)) {
+      addLog('WARN', 'PCB Module Change: Latch number is required (decimal).');
       if (el) { el.focus(); el.style.borderColor = 'var(--red)'; setTimeout(() => el.style.borderColor = '', 1200); }
       return;
     }
@@ -265,16 +279,16 @@ function toggleSection(id) {
   });
 }
 
-async function sendCmd(raw) {
+// hidden = true keeps the command out of the Activity Log (it is still saved for the log downloads)
+async function sendCmd(raw, hidden) {
   const eol = eolSuffix();
   const full = raw + eol;
   const encoded = new TextEncoder().encode(full);
   if (writer) {
     await writer.write(encoded);
-    rawLog.push({ ts: new Date(), dir: 'TX', text: raw });
-    addLog('CMD', `> ${raw}`);
+    addLog('CMD', `> ${raw}`, hidden);
   } else {
-    addLog('CMD', `[preview] ${raw}`);
+    addLog('CMD', `[preview] ${raw}`, hidden);
   }
 }
 
@@ -410,15 +424,23 @@ function refreshPreviews() {
 }
 
 // ── Timestamp ──
+// The timestamp-off sequence is not shown in the Activity Log; it is still saved for the log downloads.
+let tsSequenceActive = false;
+
 async function toggleTimestamp() {
   const cmds = ['C','Z0','O'];
-  for (const c of cmds) {
-    await sendCmd(c);
-    await delay(150);
+  tsSequenceActive = true;
+  try {
+    for (const c of cmds) {
+      await sendCmd(c, true);
+      await delay(150);
+    }
+  } finally {
+    tsSequenceActive = false;
   }
   tsState = 'off';
   updateTsBtn();
-  addLog('OK', 'Timestamp turned OFF');
+  addLog('OK', 'Timestamp turned OFF', true);
 }
 
 function updateTsBtn() {
@@ -440,7 +462,6 @@ async function openPort() {
     const info = port.getInfo();
     writer = port.writable.getWriter();
     portLabel = `VID${hex(info.usbVendorId)}`;
-    rawLog = [];
     addLog('OK', `Port opened \u2014 VID:0x${hex(info.usbVendorId)} PID:0x${hex(info.usbProductId)} @ ${baud} baud`);
     setConnected(true);
     startReader();
@@ -477,7 +498,6 @@ function startReader() {
         }
         if (pendingLines.length) {
           pendingLines.forEach(l => {
-            rawLog.push({ ts: new Date(), dir: 'RX', text: l });
             addLog('RX', l);
             if (rxCallback) rxCallback(l);
           });
@@ -572,8 +592,6 @@ async function fireCabinetColor(color) {
 
 // ── Quick commands (mode buttons) ──
 const QUICK_CMD_MAP = {
-  oldRgb:     a => `t${a}F5571601FFFF`,
-  waterfall:  a => `t${a}F55716010300`,
   standalone: a => `t${a}F4571D0000`,
   rgbw:       a => `t${a}F4571D0100`,
   rgb:        a => `t${a}F4571D0200`,
@@ -581,8 +599,6 @@ const QUICK_CMD_MAP = {
 };
 
 const QUICK_CMD_LABELS = {
-  oldRgb:     'OLD RGB Mode',
-  waterfall:  'Waterfall Mode',
   standalone: 'STANDALONE',
   rgbw:       'RGBW',
   rgb:        'RGB',
@@ -947,11 +963,11 @@ const REGISTER_MAP = {
   '0f': { name: 'Latch Open-Circuit Current Limit',    unit: 'ma' },
   '10': { name: 'Latch Feedback Debounce Period',      unit: 'ms' },
   '11': { name: 'Total Active Latches',                unit: 'latches' },
-  '12': { name: 'Active Latches Map Array',            unit: 'bitmap' },
+  '12': { name: 'Active Latches Map Array',            unit: 'active_latch' },
   '13': { name: 'Latch Feedback Check Delay',          unit: 'ms' },
   '14': { name: 'Latch Feedback Check Period',         unit: 'ms' },
   '15': { name: 'Latch Monitors Map Array',            unit: 'bitmap' },
-  '16': { name: 'Latch PCB Module Map Array',          unit: 'bitmap' },
+  '16': { name: 'Latch PCB Module Map Array',          unit: 'pcb_module' },
   '17': { name: 'Latch Striker Check Period',          unit: 'ms' },
   '18': { name: 'Latch Tamper Check Period',           unit: 'ms' },
   '19': { name: 'Current Limit Switch Retries Limit',  unit: 'num' },
@@ -976,8 +992,6 @@ const REGISTER_MAP = {
   '6c': { name: 'ARGBW LED Strip Count',               unit: 'num' },
   '6e': { name: 'Run Time',                            unit: 'sec' },
   '76': { name: 'Firmware Version',                    unit: 'version' },
-  // ── Multi-byte Register IDs ──
-  '1601': { name: 'RGB LED Mode',                      unit: 'rgbledmode' },
 };
 
 function getRegName(id) {
@@ -1119,6 +1133,26 @@ function decodeRegValue(unit, valueHex) {
       if (b3 & 1) active.push(17);
       return active.length ? `Latches: ${active.join(', ')}` : 'None';
     }
+    case 'active_latch': {
+      // Latch position (2 hex) + value (4 hex LE). The array is zero-based,
+      // so the shown value is raw + 1 (raw 0–16 → 1–17).
+      if (valueHex.length < 6) return valueHex.toUpperCase();
+      const pos = parseInt(valueHex.substring(0, 2), 16);
+      const rawHex = valueHex.substring(2, 6);
+      const raw = parseInt(swapBytesHex(rawHex), 16);
+      if (isNaN(pos) || isNaN(raw)) return valueHex.toUpperCase();
+      if (raw > 16) return `Active Latch ${pos} -> Out of range (raw 0x${rawHex.toUpperCase()})`;
+      return `Active Latch ${pos} -> ${raw + 1}`;
+    }
+    case 'pcb_module': {
+      // Latch position (2 hex) + PCB module value (4 hex, compared as sent)
+      if (valueHex.length < 6) return valueHex.toUpperCase();
+      const pos = parseInt(valueHex.substring(0, 2), 16);
+      if (isNaN(pos)) return valueHex.toUpperCase();
+      const raw = valueHex.substring(2, 6).toUpperCase();
+      const modules = { 'FFFF': 'Default', '0300': 'Waterfall', '0100': 'Sensor Curtain' };
+      return `Latch ${pos} -> PCB Module: ${modules[raw] || `Unknown (${raw})`}`;
+    }
     case 'pos_ma': {
       // Position (2 hex) + Current (4 hex LE)
       if (valueHex.length < 6) return valueHex.toUpperCase();
@@ -1160,6 +1194,8 @@ function decodeRegReport(s) {
   if (!valueHex) return reg.name;
 
   const decoded = decodeRegValue(reg.unit, valueHex);
+  if (reg.unit === 'active_latch' && decoded.startsWith('Active Latch')) return decoded;
+  if (reg.unit === 'pcb_module' && decoded.startsWith('Latch ')) return decoded;
   return `${reg.name}: ${decoded}`;
 }
 
@@ -1566,9 +1602,23 @@ function decodeFailReport(s) {
 }
 
 // ── Log ──
-function addLog(type, msg) {
+function addLog(type, msg, hidden) {
   const wrap = document.getElementById('logWrap');
   const t = type.toUpperCase();
+
+  // Record every Activity Log entry (before and after connecting) for the log downloads
+  const sent = t === 'CMD' && msg.startsWith('> ');
+  rawLog.push({
+    ts: new Date(),
+    type: t,
+    dir: sent ? 'TX' : (t === 'RX' ? 'RX' : ''),
+    text: sent ? msg.substring(2) : msg,
+    port: writer ? portLabel : 'NO PORT',
+  });
+
+  // Saved for the downloads only: hidden entries, and the adapter's replies to the
+  // timestamp-off sequence (anything received during it that is not a CAN frame)
+  if (hidden || (tsSequenceActive && t === 'RX' && !/^t/i.test(msg))) return;
 
   let lastRow = null;
   for (let i = wrap.children.length - 1; i >= 0; i--) {
@@ -1645,10 +1695,12 @@ function fmtLogTs(d) {
 
 async function downloadRawLog() {
   if (rawLog.length === 0) {
-    addLog('WARN', 'No commands sent/received yet — connect a port and run some commands first.');
+    addLog('WARN', 'Nothing in the log to export.');
     return;
   }
 
+  // Export what is in the log now, not the progress messages of this export
+  const entries = rawLog.slice();
   addLog('INFO', 'Preparing PDF…');
 
   let jsPDF;
@@ -1699,14 +1751,20 @@ async function downloadRawLog() {
       }
     }
 
-    rawLog.forEach(entry => {
-      ensureSpace();
-      const color = entry.dir === 'TX' ? [26, 95, 168] : [123, 63, 168];
-      const dirArrow = entry.dir === 'TX' ? '>>' : '<<';
-      doc.setTextColor(...color);
-      const line = `(${fmtLogTs(entry.ts)}) (${portLabel}) (${dirArrow}) ${entry.text}`;
-      doc.text(line, marginL, y);
-      y += lineH;
+    const TYPE_COLORS = {
+      CMD: [26, 95, 168], RX: [123, 63, 168], INFO: [112, 110, 104],
+      OK: [42, 122, 75], WARN: [138, 90, 0], ERR: [176, 48, 48],
+    };
+    entries.forEach(entry => {
+      const color = TYPE_COLORS[entry.type] || [112, 110, 104];
+      // Long lines (frame + decoded message) wrap onto the next line
+      const parts = doc.splitTextToSize(pdfSafe(formatRawLogEntry(entry)), pageW - marginL * 2);
+      parts.forEach(part => {
+        ensureSpace();
+        doc.setTextColor(...color);
+        doc.text(part, marginL, y);
+        y += lineH;
+      });
     });
 
     const totalPages = doc.internal.getNumberOfPages();
@@ -1720,15 +1778,44 @@ async function downloadRawLog() {
     }
 
     doc.save(`alfie-logs-${Date.now()}.pdf`);
-    addLog('OK', `Logs exported as PDF (${rawLog.length} entries, ${totalPages} page${totalPages > 1 ? 's' : ''}).`);
+    addLog('OK', `Logs exported as PDF (${entries.length} entries, ${totalPages} page${totalPages > 1 ? 's' : ''}).`);
   } catch (e) {
     addLog('ERR', 'PDF export failed: ' + e.message + '. Falling back to text export.');
     downloadRawLogText();
   }
 }
 
+// Toolbar button: raw TX/RX log as a .txt file
+function downloadRawLogTxt() {
+  if (rawLog.length === 0) {
+    addLog('WARN', 'Nothing in the log to export.');
+    return;
+  }
+  const count = rawLog.length;
+  downloadRawLogText();
+  addLog('OK', `Logs exported as text (${count} entries).`);
+}
+
+// One log line, shared by the PDF and .txt downloads:
+//   (time) (port) (>> sent | << received | entry type) text
+// Received frames also get " - [REPORT TYPE] decoded message", as shown in the Activity Log.
+function formatRawLogEntry(e) {
+  const tag = e.dir === 'TX' ? '>>' : (e.dir === 'RX' ? '<<' : e.type);
+  let line = `(${fmtLogTs(e.ts)}) (${e.port}) (${tag}) ${e.text}`;
+  if (e.dir === 'RX') {
+    const rf = parseReportFrame(e.text);
+    if (rf) line += ` - [${rf.label}]${rf.decodedMsg ? ' ' + rf.decodedMsg : ''}`;
+  }
+  return line;
+}
+
+// The PDF's built-in font has no arrow character; keep the text readable there
+function pdfSafe(text) {
+  return text.replace(/\u2192/g, '->').replace(/[^\x00-\xFF\u2013\u2014\u2018\u2019\u201C\u201D\u2026]/g, '?');
+}
+
 function downloadRawLogText() {
-  const text = rawLog.map(e => `(${fmtLogTs(e.ts)}) (${portLabel}) (${e.dir === 'TX' ? '>>' : '<<'}) ${e.text}`).join('\n');
+  const text = rawLog.map(formatRawLogEntry).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
   a.download = `alfie-commands-${Date.now()}.txt`;
@@ -2155,6 +2242,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // Door Status: Enter on door input
   document.getElementById('in-statusDoor').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); fireCmd('statusDoor'); }
+  });
+
+  // PCB Module Change: Enter on a latch input
+  ['pcbDefault', 'pcbWaterfall', 'pcbSensor'].forEach(key => {
+    const el = document.getElementById('in-' + key);
+    if (el) el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); fireCmd(key); }
+    });
   });
 
   // Read Parameter: Enter on either DLC or ID input fires the read

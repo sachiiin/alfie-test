@@ -76,6 +76,7 @@
   <div class="tb-sep"></div>
 
   <button class="tb-btn" onclick="downloadRawLog()">↓ Download Logs</button>
+  <button class="tb-btn" onclick="downloadRawLogTxt()">↓ Download Logs (.txt)</button>
 
 </div>
 
@@ -200,16 +201,42 @@
           <button class="cmd-btn color-btn color-blue"  id="btn-blue"  onclick="handleColorCmd('blue')" >Blue</button>
         </div>
         <div id="color-status" style="display:none; font-size:11px; font-weight:600; padding:3px 2px 0; color:var(--text-muted);"></div>
-        <div class="cmd-row-inner" style="gap:6px; margin-top:4px;">
-          <button class="cmd-btn" onclick="fireQuickCmd('oldRgb')">OLD RGB Mode</button>
-          <button class="cmd-btn" onclick="fireQuickCmd('waterfall')">Waterfall Mode</button>
-        </div>
         <div class="cmd-row-inner" style="gap:6px; margin-top:4px; display:grid; grid-template-columns:1fr 1fr;">
           <button class="cmd-btn" onclick="fireQuickCmd('standalone')">STANDALONE</button>
           <button class="cmd-btn" onclick="fireQuickCmd('rgbw')">RGBW</button>
           <button class="cmd-btn" onclick="fireQuickCmd('rgb')">RGB</button>
           <button class="cmd-btn" onclick="fireQuickCmd('rgbWon')">RGB &amp; W ON</button>
         </div>
+      </div>
+
+      <!-- SECTION: PCB Module Change -->
+      <div class="cmd-section" style="margin-top:6px;">PCB Module Change</div>
+
+      <!-- Default Mode {Latch} -->
+      <div class="cmd-row">
+        <div class="cmd-row-inner">
+          <button class="cmd-btn" onclick="fireCmd('pcbDefault')">Default Mode</button>
+          <input class="cmd-input" id="in-pcbDefault" type="text" maxlength="2" placeholder="Latch #" value="01" oninput="refreshPreviews()" title="Latch No. (decimal)">
+        </div>
+        <div class="cmd-preview" id="prev-pcbDefault"></div>
+      </div>
+
+      <!-- Waterfall Mode {Latch} -->
+      <div class="cmd-row">
+        <div class="cmd-row-inner">
+          <button class="cmd-btn" onclick="fireCmd('pcbWaterfall')">Waterfall Mode</button>
+          <input class="cmd-input" id="in-pcbWaterfall" type="text" maxlength="2" placeholder="Latch #" value="01" oninput="refreshPreviews()" title="Latch No. (decimal)">
+        </div>
+        <div class="cmd-preview" id="prev-pcbWaterfall"></div>
+      </div>
+
+      <!-- Sensor Curtain Mode {Latch} -->
+      <div class="cmd-row">
+        <div class="cmd-row-inner">
+          <button class="cmd-btn" onclick="fireCmd('pcbSensor')">Sensor Curtain Mode</button>
+          <input class="cmd-input" id="in-pcbSensor" type="text" maxlength="2" placeholder="Latch #" value="01" oninput="refreshPreviews()" title="Latch No. (decimal)">
+        </div>
+        <div class="cmd-preview" id="prev-pcbSensor"></div>
       </div>
 
       <!-- SECTION: Read Parameter Commands -->
