@@ -239,6 +239,15 @@
         <div class="cmd-preview" id="prev-pcbSensor"></div>
       </div>
 
+      <!-- Compartment Status {Latch} -->
+      <div class="cmd-row">
+        <div class="cmd-row-inner">
+          <button class="cmd-btn" onclick="fireCmd('compStatus')">Compartment Status</button>
+          <input class="cmd-input" id="in-compStatus" type="text" maxlength="2" placeholder="Latch #" value="01" oninput="refreshPreviews()" title="Latch No. (decimal)">
+        </div>
+        <div class="cmd-preview" id="prev-compStatus"></div>
+      </div>
+
       <!-- SECTION: Read Parameter Commands -->
       <div class="cmd-section" style="margin-top:6px;">Read Register Commands</div>
 

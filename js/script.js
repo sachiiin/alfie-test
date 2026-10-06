@@ -25,6 +25,8 @@ const CMD_MAP = {
   pcbDefault:   (a, d) => `t${a}F55716${decToHex(d)}FFFF`,
   pcbWaterfall: (a, d) => `t${a}F55716${decToHex(d)}0300`,
   pcbSensor:    (a, d) => `t${a}F55716${decToHex(d)}0100`,
+  // Compartment Status, per latch: t{Alfie}F243{Latch hex}
+  compStatus:   (a, d) => `t${a}F243${decToHex(d)}`,
 };
 
 // UBIE commands: different protocol from Alfie, uses t{No.}A instead of t{No.}F
@@ -138,12 +140,12 @@ async function fireCmd(key) {
       return;
     }
   }
-  // ── PCB Module Change: latch number required (decimal) ──
-  if (key === 'pcbDefault' || key === 'pcbWaterfall' || key === 'pcbSensor') {
+  // ── PCB Module Change and Compartment Status: latch number required (decimal) ──
+  if (key === 'pcbDefault' || key === 'pcbWaterfall' || key === 'pcbSensor' || key === 'compStatus') {
     const el = document.getElementById('in-' + key);
     const val = el ? el.value.trim() : '';
     if (!/^\d+$/.test(val)) {
-      addLog('WARN', 'PCB Module Change: Latch number is required (decimal).');
+      addLog('WARN', `${key === 'compStatus' ? 'Compartment Status' : 'PCB Module Change'}: Latch number is required (decimal).`);
       if (el) { el.focus(); el.style.borderColor = 'var(--red)'; setTimeout(() => el.style.borderColor = '', 1200); }
       return;
     }
@@ -2245,7 +2247,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // PCB Module Change: Enter on a latch input
-  ['pcbDefault', 'pcbWaterfall', 'pcbSensor'].forEach(key => {
+  ['pcbDefault', 'pcbWaterfall', 'pcbSensor', 'compStatus'].forEach(key => {
     const el = document.getElementById('in-' + key);
     if (el) el.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); fireCmd(key); }
