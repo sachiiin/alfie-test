@@ -968,7 +968,7 @@ const REGISTER_MAP = {
   '12': { name: 'Active Latches Map Array',            unit: 'active_latch' },
   '13': { name: 'Latch Feedback Check Delay',          unit: 'ms' },
   '14': { name: 'Latch Feedback Check Period',         unit: 'ms' },
-  '15': { name: 'Latch Monitors Map Array',            unit: 'bitmap' },
+  '15': { name: 'Latch Monitors Map Array',            unit: 'latch_monitor' },
   '16': { name: 'Latch PCB Module Map Array',          unit: 'pcb_module' },
   '17': { name: 'Latch Striker Check Period',          unit: 'ms' },
   '18': { name: 'Latch Tamper Check Period',           unit: 'ms' },
@@ -983,7 +983,7 @@ const REGISTER_MAP = {
   '41': { name: 'Instant Voltage',                     unit: 'mv' },
   '42': { name: 'Average Voltage',                     unit: 'mv' },
   '43': { name: 'Peak Voltage',                        unit: 'mv' },
-  '56': { name: 'Bootloader Version',                  unit: 'version' },
+  '56': { name: 'Bootloader Version',                  unit: 'bootver' },
   '61': { name: 'Total Instant Current',               unit: 'ma' },
   '62': { name: 'Total Average Current',               unit: 'ma' },
   '63': { name: 'Total Peak Current',                  unit: 'ma' },
@@ -1110,6 +1110,15 @@ function decodeRegValue(unit, valueHex) {
       if (isNaN(major) || isNaN(minor) || isNaN(build)) return valueHex.toUpperCase();
       return `${major}.${minor}.${build}`;
     }
+    case 'bootver': {
+      // Bootloader version: Byte 0: Major, Byte 1: Minor, Bytes 2-3: Build (big-endian)
+      if (valueHex.length < 8) return valueHex.toUpperCase();
+      const major = parseInt(valueHex.substring(0, 2), 16);
+      const minor = parseInt(valueHex.substring(2, 4), 16);
+      const build = parseInt(valueHex.substring(4, 8), 16);
+      if (isNaN(major) || isNaN(minor) || isNaN(build)) return valueHex.toUpperCase();
+      return `${major}.${minor}.${build}`;
+    }
     case 'serial': {
       if (valueHex.length < 8) return valueHex.toUpperCase();
       return swapBytesHex(valueHex.substring(0, 8)).toUpperCase();
@@ -1155,6 +1164,15 @@ function decodeRegValue(unit, valueHex) {
       const modules = { 'FFFF': 'Default', '0300': 'Waterfall', '0100': 'Sensor Curtain' };
       return `Latch ${pos} -> PCB Module: ${modules[raw] || `Unknown (${raw})`}`;
     }
+    case 'latch_monitor': {
+      // Latch position (2 hex) + monitor value (4 hex, compared as sent)
+      if (valueHex.length < 6) return valueHex.toUpperCase();
+      const pos = parseInt(valueHex.substring(0, 2), 16);
+      if (isNaN(pos)) return valueHex.toUpperCase();
+      const raw = valueHex.substring(2, 6).toUpperCase();
+      const monitors = { 'FFFF': 'Default' };
+      return `Latch ${pos} -> Latch Monitor: ${monitors[raw] || `Unknown (${raw})`}`;
+    }
     case 'pos_ma': {
       // Position (2 hex) + Current (4 hex LE)
       if (valueHex.length < 6) return valueHex.toUpperCase();
@@ -1198,6 +1216,7 @@ function decodeRegReport(s) {
   const decoded = decodeRegValue(reg.unit, valueHex);
   if (reg.unit === 'active_latch' && decoded.startsWith('Active Latch')) return decoded;
   if (reg.unit === 'pcb_module' && decoded.startsWith('Latch ')) return decoded;
+  if (reg.unit === 'latch_monitor' && decoded.startsWith('Latch ')) return decoded;
   return `${reg.name}: ${decoded}`;
 }
 
