@@ -2,7 +2,11 @@
 //  Alfie Test Portal — Main Script
 // ══════════════════════════════════════════════
 
-const HAS_API = ('serial' in navigator);
+// Android Chrome lists only Bluetooth devices in its Web Serial picker, so on Android
+// (or wherever Web Serial is missing) the USB transceiver is reached over WebUSB instead.
+const IS_ANDROID = /Android/i.test(navigator.userAgent);
+const USE_USB = ('usb' in navigator) && (IS_ANDROID || !('serial' in navigator));
+const HAS_API = ('serial' in navigator) || ('usb' in navigator);
 let port = null, writer = null;
 let portLabel = 'PORT';
 let rawLog = [];  // Every Activity Log entry: { ts: Date, type, dir: 'TX'|'RX'|'', text, port }
@@ -454,17 +458,99 @@ function updateTsBtn() {
 // ── Port ──
 let readerLoopActive = false;
 
+// ── USB serial over WebUSB (USB CDC-ACM) ──
+// Gives the same open / readable / writable / getInfo / close shape as a Web Serial port,
+// so the rest of the portal uses it unchanged.
+class UsbSerialPort {
+  constructor(device) {
+    this.device = device;
+    this._readable = null;
+    this._writable = null;
+  }
+  getInfo() { return { usbVendorId: this.device.vendorId, usbProductId: this.device.productId }; }
+  get readable() { return this._readable; }
+  get writable() { return this._writable; }
+
+  async open({ baudRate }) {
+    const d = this.device;
+    await d.open();
+    if (d.configuration === null) await d.selectConfiguration(1);
+    const ifaces = d.configuration.interfaces;
+    // Data interface: the one with a bulk IN and a bulk OUT endpoint (class 0x0A on CDC devices)
+    let dataIf = null, inEp = null, outEp = null;
+    for (const itf of ifaces) {
+      for (const alt of itf.alternates) {
+        const bin  = alt.endpoints.find(e => e.type === 'bulk' && e.direction === 'in');
+        const bout = alt.endpoints.find(e => e.type === 'bulk' && e.direction === 'out');
+        if (bin && bout && (!dataIf || alt.interfaceClass === 0x0A)) { dataIf = itf; inEp = bin; outEp = bout; }
+      }
+    }
+    if (!dataIf) throw new Error('No serial data interface found on this USB device');
+    // Control interface: CDC class 0x02 if the device has one, otherwise the data interface
+    const ctrlIf = ifaces.find(itf => itf.alternates.some(a => a.interfaceClass === 0x02)) || dataIf;
+    this.ctrlNum = ctrlIf.interfaceNumber;
+    this.dataNum = dataIf.interfaceNumber;
+    this.inEp = inEp; this.outEp = outEp;
+    if (this.ctrlNum !== this.dataNum) await d.claimInterface(this.ctrlNum);
+    await d.claimInterface(this.dataNum);
+
+    // SET_LINE_CODING: baud rate (4 bytes, little-endian), 1 stop bit, no parity, 8 data bits
+    const lc = new DataView(new ArrayBuffer(7));
+    lc.setUint32(0, baudRate, true); lc.setUint8(4, 0); lc.setUint8(5, 0); lc.setUint8(6, 8);
+    try {
+      await d.controlTransferOut({ requestType: 'class', recipient: 'interface', request: 0x20, value: 0, index: this.ctrlNum }, lc.buffer);
+      // SET_CONTROL_LINE_STATE: DTR and RTS on
+      await d.controlTransferOut({ requestType: 'class', recipient: 'interface', request: 0x22, value: 0x03, index: this.ctrlNum });
+    } catch (e) { /* some adapters do not take line coding; the data path still works */ }
+
+    const self = this;
+    this._readable = new ReadableStream({
+      async pull(controller) {
+        try {
+          const r = await d.transferIn(self.inEp.endpointNumber, self.inEp.packetSize || 64);
+          if (r.status === 'stall') { await d.clearHalt('in', self.inEp.endpointNumber); return; }
+          if (r.data && r.data.byteLength) controller.enqueue(new Uint8Array(r.data.buffer, r.data.byteOffset, r.data.byteLength));
+        } catch (e) {
+          self._readable = null;
+          controller.error(e);
+        }
+      },
+      cancel() { self._readable = null; }
+    });
+    this._writable = new WritableStream({
+      async write(chunk) {
+        const r = await d.transferOut(self.outEp.endpointNumber, chunk);
+        if (r.status === 'stall') { await d.clearHalt('out', self.outEp.endpointNumber); throw new Error('USB write stalled'); }
+      }
+    });
+  }
+
+  async close() {
+    const d = this.device;
+    this._readable = null; this._writable = null;
+    try { await d.controlTransferOut({ requestType: 'class', recipient: 'interface', request: 0x22, value: 0x00, index: this.ctrlNum }); } catch (_) {}
+    try { await d.releaseInterface(this.dataNum); } catch (_) {}
+    if (this.ctrlNum !== this.dataNum) { try { await d.releaseInterface(this.ctrlNum); } catch (_) {} }
+    try { await d.close(); } catch (_) {}
+  }
+}
+
+async function requestUsbSerialPort() {
+  const device = await navigator.usb.requestDevice({ filters: [] });
+  return new UsbSerialPort(device);
+}
+
 async function openPort() {
   if (!HAS_API) { addLog('ERR', 'Web Serial API unavailable \u2014 use Chrome, Edge, or Firefox 151+ on HTTPS or localhost.'); return; }
   try {
     addLog('INFO', 'Requesting port from browser\u2026');
-    port = await navigator.serial.requestPort();
+    port = USE_USB ? await requestUsbSerialPort() : await navigator.serial.requestPort();
     const baud = parseInt(document.getElementById('baudSelect').value);
     await port.open({ baudRate: baud });
     const info = port.getInfo();
     writer = port.writable.getWriter();
     portLabel = `VID${hex(info.usbVendorId)}`;
-    addLog('OK', `Port opened \u2014 VID:0x${hex(info.usbVendorId)} PID:0x${hex(info.usbProductId)} @ ${baud} baud`);
+    addLog('OK', `Port opened${USE_USB ? ' (USB)' : ''} \u2014 VID:0x${hex(info.usbVendorId)} PID:0x${hex(info.usbProductId)} @ ${baud} baud`);
     setConnected(true);
     startReader();
     // Auto-turn off timestamp on connect
