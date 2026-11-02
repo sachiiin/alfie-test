@@ -655,6 +655,28 @@ function getColorMode() {
   return document.getElementById('colorModeSelect').value;
 }
 
+// Number of latches for Cycle / Cabinet Test (latches 1 up to N). Returns null and warns if not 1–17.
+function getColorLatchCount() {
+  const el = document.getElementById('in-colorLatches');
+  const val = el ? el.value.trim() : '';
+  const n = /^\d+$/.test(val) ? parseInt(val, 10) : NaN;
+  if (!(n >= 1 && n <= 17)) {
+    addLog('WARN', 'Change Color: number of latches must be 1–17 (decimal).');
+    if (el) { el.focus(); el.style.borderColor = 'var(--red)'; setTimeout(() => el.style.borderColor = '', 1200); }
+    return null;
+  }
+  return n;
+}
+
+// Cabinet Test latch map for latches 1..n: byte 1 = latches 1–8, byte 2 = latches 9–16, byte 3 bit 0 = latch 17.
+// Bits 1–7 of byte 3 stay set, as in the original all-latches command (FF FF FE).
+function cabinetLatchMap(n) {
+  const b1 = n >= 8 ? 0xFF : (1 << n) - 1;
+  const b2 = n >= 16 ? 0xFF : (n > 8 ? (1 << (n - 8)) - 1 : 0);
+  const b3 = 0xFE | (n >= 17 ? 0x01 : 0x00);
+  return [b1, b2, b3].map(decToHex2).join('');
+}
+
 async function handleColorCmd(color) {
   if (getColorMode() === 'cabinet') {
     await fireCabinetColor(color);
@@ -668,13 +690,15 @@ async function fireCabinetColor(color) {
     addLog('WARN', 'Connect a COM port before running color commands.');
     return;
   }
+  const n = getColorLatchCount();
+  if (n === null) return;
   const alfie = getAlfie();
   const rgb = CABINET_COLOR[color];
-  const cmd = `t${alfie}F74CFFFFFE${rgb}`;
+  const cmd = `t${alfie}F74C${cabinetLatchMap(n)}${rgb}`;
   setColorBtnActive(color);
   await sendCmd(cmd);
   const colorName = color.charAt(0).toUpperCase() + color.slice(1);
-  addLog('OK', `Cabinet Test \u2192 All latches (1\u201317) \u2192 ${colorName}`);
+  addLog('OK', `Cabinet Test \u2192 ${n === 1 ? 'Latch 1' : `Latches 1\u2013${n}`} \u2192 ${colorName}`);
   setTimeout(() => setColorBtnActive(null), 600);
 }
 
@@ -737,15 +761,17 @@ async function startColorLoop(color) {
     return;
   }
 
+  const n = getColorLatchCount();
+  if (n === null) return;
   colorLoopRunning = true;
   colorLoopStop    = false;
   setColorBtnActive(color);
   const alfie    = getAlfie();
   const colorVal = COLOR_HEX[color];
   const stopSig  = getStopSignal();
-  addLog('INFO', `Starting ${color.toUpperCase()} color loop for up to 16 latches\u2026`);
+  addLog('INFO', `Starting ${color.toUpperCase()} color loop for ${n === 1 ? 'latch 1' : `latches 1\u2013${n}`}\u2026`);
 
-  for (let latch = 1; latch <= 16; latch++) {
+  for (let latch = 1; latch <= n; latch++) {
     if (colorLoopStop) {
       addLog('INFO', `Color loop stopped early at latch ${latch}.`);
       break;
@@ -753,7 +779,7 @@ async function startColorLoop(color) {
 
     const latchHex = decToHex2(latch);
     const cmd = `t${alfie}F7576D${latchHex}${colorVal}`;
-    setColorStatus(`Sending latch ${latch}/16 (${latchHex})\u2026`, 'var(--amber)');
+    setColorStatus(`Sending latch ${latch}/${n} (${latchHex})\u2026`, 'var(--amber)');
 
     await sendCmd(cmd);
 

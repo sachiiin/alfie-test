@@ -190,10 +190,11 @@
 
       <div class="cmd-row">
         <div class="cmd-row-inner" style="margin-bottom:4px;">
-          <select class="tb-select alfie-select" id="colorModeSelect" style="width:100%;">
+          <select class="tb-select alfie-select" id="colorModeSelect" style="flex:1; min-width:0;">
             <option value="cycle" selected>Cycle Test</option>
             <option value="cabinet">Cabinet Test</option>
           </select>
+          <input class="cmd-input" id="in-colorLatches" type="text" maxlength="2" placeholder="Latches" value="16" title="Number of latches, 1–17 (decimal). Cycle and Cabinet Test run on latches 1 up to this number.">
         </div>
         <div class="cmd-row-inner" style="gap:6px;">
           <button class="cmd-btn color-btn color-red"   id="btn-red"   onclick="handleColorCmd('red')"  >Red</button>
